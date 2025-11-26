@@ -232,7 +232,7 @@
             <div class="ytm-upload-menu-title">歌詞アップロード</div>
             <button class="ytm-upload-menu-item" data-action="local">
                 <span class="ytm-upload-menu-item-icon">💾</span>
-                <span>ローカルフォルダーのアップロード</span>
+                <span>ローカルLRCを読む</span>
             </button>
             <button class="ytm-upload-menu-item" data-action="add-sync">
                 <span class="ytm-upload-menu-item-icon">✨</span>
