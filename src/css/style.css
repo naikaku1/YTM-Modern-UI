@@ -104,9 +104,9 @@ body.ytm-custom-layout ytmusic-search-box {
 
 #ytm-btn-area {
     display: flex;
-		gap: 10px;
-		justify-content: center;
-		margin-top: 10px;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 10px;
     transition: opacity 0.5s ease, visibility 0.5s ease;
     opacity: 1;
     visibility: visible;
