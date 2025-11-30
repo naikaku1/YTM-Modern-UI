@@ -309,8 +309,9 @@ body.ytm-custom-layout .middle-controls {
     padding: 0 5px !important;
     display: flex !important;
     align-items: center !important;
-    gap: 10px !重要;
+    gap: 10px !important;
     overflow: visible !important;
+    position: relative !important; /* positioning context for absolute slider fallback */
 }
 
 /* ★ いいね / わるいいね の順番整理 */
@@ -328,10 +329,28 @@ body.ytm-custom-layout ytmusic-player-bar .middle-controls ytmusic-toggle-button
 }
 
 /* 再生位置スライダー */
+/* Note: tp-yt-paper-slider may render internal track using full width inside its host.
+   Using padding and box-sizing on the host ensures the visible track stays inset
+   so it visually begins/ends where the player rounded corners finish.
+*/
+body.ytm-custom-layout ytmusic-player-bar .middle-controls tp-yt-paper-slider,
 body.ytm-custom-layout .middle-controls tp-yt-paper-slider {
     order: 3;
+    /* allow the host to occupy the full flex space and inset the track using padding */
     width: 100% !important;
     margin: 0 !important;
+    padding: 0 20px !important; /* create 20px inset inside host */
+    box-sizing: border-box !important;
+    min-width: 0 !important;
+    flex-shrink: 1 !important;
+    pointer-events: auto !important;
+     /* Fallback: absolutely position inside the middle-controls so track begins/ends
+         exactly at 40px offset from the player's edges (40px = corner radius). */
+     position: absolute !important;
+     left: 40px !important;
+     right: 40px !important;
+     width: auto !important;
+     margin: 0 !important;
     padding: 0 !important;
     flex: 1 1 auto !important;
     height: 40px !important;
@@ -350,12 +369,24 @@ body.ytm-custom-layout ytmusic-player-bar #container,
 body.ytm-custom-layout ytmusic-player-bar .thumbnail-image-wrapper,
 body.ytm-custom-layout ytmusic-player-bar .content-info-wrapper { display: none !important; }
 
+
 body.ytm-custom-layout ytmusic-player-bar .right-controls {
   display: flex !important;
   align-items: center !important;
   gap: 10px !important;
 }
 
+body.ytm-custom-layout .progress-bar,
+body.ytm-custom-layout [class*="progress"],
+body.ytm-custom-layout .song-progress,
+body.ytm-custom-layout ytmusic-player-bar [role="slider"],body.ytm-custom-layout ytmusic-player-bar [role="slider"],
+body.ytm-custom-layout ytmusic-player-bar ytmusic-player-bar [role="slider"],
+body.ytm-custom-layout ytmusic-player-bar ytmusic-player-bar [role="slider"] {
+  overflow: clip !important;
+  border-radius: 35px !important;
+  padding: 0 35px !important;
+  box-sizing: border-box !important;
+}
 /* IMMERSION  */
 #my-mode-toggle {
   padding: 4px 10px;

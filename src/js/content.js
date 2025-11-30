@@ -1148,6 +1148,7 @@
         lastActiveIndex = isInterlude ? -1 : idx;
     }
 
+    
     const tick = async () => {
         if (!document.getElementById('my-mode-toggle')) {
             const rc = document.querySelector('.right-controls-buttons');
@@ -1171,6 +1172,21 @@
 
         document.body.classList.add('ytm-custom-layout');
         initLayout();
+
+        // ensure slider host is inset so visual track lines up with rounded corners
+        (function patchSliders() {
+            const sliders = document.querySelectorAll('ytmusic-player-bar .middle-controls tp-yt-paper-slider');
+            sliders.forEach(s => {
+                try {
+                    s.style.boxSizing = 'border-box';
+                    s.style.paddingLeft = '20px';
+                    s.style.paddingRight = '20px';
+                    s.style.minWidth = '0';
+                } catch (e) {
+                    // ignore
+                }
+            });
+        })();
 
         const meta = getMetadata();
         if (!meta) return;
