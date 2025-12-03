@@ -22,6 +22,7 @@
   let shareMode = false;
   let shareStartIndex = null;
   let shareEndIndex = null;
+  let isFallbackLyrics = false; // フォールバックされたか確認するやつ
 
   // ★ 追加: API から来る config / requests を保持
   let lyricsRequests = null;
@@ -444,6 +445,7 @@
       }
     });
 
+    // ★ DeepL 翻訳が必要な言語だけここで埋める
     if (needDeepL.length && config.deepLKey) {
       for (const lang of needDeepL) {
         const translatedTexts = await translateTo(baseLines, lang);
@@ -455,7 +457,8 @@
           transLinesByLang[lang] = lines;
 
           const plain = translatedTexts.join('\n');
-          if (plain.trim()) {
+          // ★ フォールバック歌詞のときは REGISTER_TRANSLATION しない
+          if (plain.trim() && !isFallbackLyrics) {
             chrome.runtime.sendMessage({
               type: 'REGISTER_TRANSLATION',
               payload: { youtube_url: youtubeUrl, lang, lyrics: plain }
@@ -467,6 +470,7 @@
       }
     }
 
+    // ★ ここから先は元のロジックそのまま
     const alignedMap = buildAlignedTranslations(baseLines, transLinesByLang);
     const final = baseLines.map(l => ({ ...l }));
 
@@ -505,30 +509,40 @@
     return final;
   }
 
+
+  //翻訳処理（※タイムスタンプの空白を詰めない仕様などあるため、触るときは慎重に）
   const buildAlignedTranslations = (baseLines, transLinesByLang) => {
     const alignedMap = {};
-    const TOL = 0.15;
-
+    const TOL = 0.15; // 時間マッチの許容誤差
+  
     Object.keys(transLinesByLang).forEach(lang => {
       const arr = transLinesByLang[lang];
       const res = new Array(baseLines.length).fill(null);
-
+  
       if (!Array.isArray(arr) || !arr.length) {
         alignedMap[lang] = res;
         return;
       }
-
-      let j = 0;
+  
+      let j = 0; // 翻訳側のインデックス
+  
       for (let i = 0; i < baseLines.length; i++) {
         const baseLine = baseLines[i] || {};
         const tBase = baseLine.time;
         const baseTextRaw = (baseLine.text ?? '');
-
-        if (baseTextRaw.trim() === '') {
+  
+        // ★ 元の歌詞側が「空行」の場所には絶対に翻訳を入れない
+        const isEmptyBaseLine =
+          typeof baseTextRaw === 'string' && baseTextRaw.trim() === '';
+  
+        if (isEmptyBaseLine) {
+          // 空行は空行のままにしておきたいので、翻訳文字列を詰めない
+          // （getLangTextAt 側で baseText が '' なので、結果的に空行になる）
           res[i] = '';
           continue;
         }
-
+  
+        // ★ タイムスタンプ無し歌詞（プレーンな行）は従来通り「行番号で」対応
         if (typeof tBase !== 'number') {
           const cand = arr[i];
           if (cand && typeof cand.text === 'string') {
@@ -539,6 +553,7 @@
           continue;
         }
 
+        // ★ 翻訳側の time が base よりかなり前のものはスキップして進める
         while (
           j < arr.length &&
           typeof arr[j].time === 'number' &&
@@ -555,16 +570,18 @@
           const raw = (arr[j].text ?? '');
           const trimmed = raw.trim();
           res[i] = trimmed === '' ? '' : trimmed;
+          j++;
         } else {
-          res[i] = null;
         }
       }
 
-      alignedMap[lang] = res;
-    });
+    alignedMap[lang] = res;
+  });
 
-    return alignedMap;
-  };
+  return alignedMap;
+};
+
+
 
   async function applyLyricsText(rawLyrics) {
     const keyAtStart = currentKey;
@@ -1116,6 +1133,7 @@
     if (thisKey !== currentKey) return;
 
     let cached = await storage.get(thisKey);
+    isFallbackLyrics = false;
     dynamicLines = null;
     lyricsCandidates = null;
     selectedCandidateId = null;
@@ -1138,6 +1156,9 @@
         }
         if (cached.noLyrics) {
           noLyricsCached = true;
+        }
+        if (cached.githubFallback) {
+          isFallbackLyrics = true;
         }
       }
     }
@@ -1171,17 +1192,12 @@
         lyricsRequests = Array.isArray(res?.requests) ? res.requests : null;
         lyricsConfig = res?.config || null;
 
-        if (res?.githubFallback) {
+        // ★ フォールバックフラグを反映
+        isFallbackLyrics = !!res?.githubFallback;
+
+        if (isFallbackLyrics) {
           showToast('APIが応答しないため、GitHubの歌詞を使用しました');
         }
-
-        if (Array.isArray(res?.candidates) && res.candidates.length) {
-          lyricsCandidates = res.candidates;
-        } else {
-          lyricsCandidates = null;
-        }
-        refreshCandidateMenu();
-        refreshLockMenu();
 
         if (res?.success && typeof res.lyrics === 'string' && res.lyrics.trim()) {
           data = res.lyrics;
@@ -1203,15 +1219,13 @@
           }
 
           if (thisKey === currentKey) {
-            if (dynamicLines) {
-              storage.set(thisKey, {
-                lyrics: data,
-                dynamicLines,
-                noLyrics: false
-              });
-            } else {
-              storage.set(thisKey, data);
-            }
+            // ★ 常にオブジェクトで保存し、フォールバック情報も一緒に持つ
+            storage.set(thisKey, {
+              lyrics: data,
+              dynamicLines: dynamicLines || null,
+              noLyrics: false,
+              githubFallback: isFallbackLyrics
+            });
           }
         } else {
           console.warn('Lyrics API returned no lyrics or success=false');

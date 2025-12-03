@@ -324,7 +324,7 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
     console.log('[BG] GET_LYRICS', { track, artist, youtube_url, video_id });
 
     (async () => {
-      const timeoutMs = 30000;
+      const timeoutMs = 60000; //フォールバックに移動するタイムアウトのやつ（早すぎると登録前にフォールバックして取得出来なくなる）
       let githubFallback = false;
 
       try {
