@@ -11,7 +11,7 @@
   box-sizing: border-box;
 }
 
-
+/* 背景ぼかし */
 #ytm-custom-bg {
   position: fixed;
   top: 0;
@@ -42,7 +42,7 @@ body.ytm-custom-layout #ytm-custom-bg {
   animation: ytmBgDrift 40s ease-in-out infinite alternate;
 }
 
-
+/* Lyrics候補バッジ用アニメ */
 @keyframes ytmLyricsBounce {
   0%, 100% { transform: translateY(0); }
   30% { transform: translateY(-2px); }
@@ -53,7 +53,7 @@ body.ytm-custom-layout #ytm-custom-bg {
   animation: ytmLyricsBounce 1.2s ease-out 3;
 }
 
-
+/* メインレイアウト */
 #ytm-custom-wrapper {
   position: fixed;
   top: 0;
@@ -88,7 +88,7 @@ body.ytm-custom-layout.ytm-no-lyrics #ytm-custom-left-col {
   transition: transform 0.5s ease;
 }
 
-
+/* 元の YTM UI を隠す（ナビ以外） */
 body.ytm-custom-layout #player-bar-background,
 body.ytm-custom-layout #guide-wrapper,
 body.ytm-custom-layout ytmusic-mini-guide-renderer,
@@ -102,7 +102,7 @@ body.ytm-custom-layout .side-panel {
   pointer-events: none !important;
 }
 
-
+/* ナビバーは残す */
 body.ytm-custom-layout ytmusic-nav-bar {
   visibility: visible !important;
   opacity: 1 !important;
@@ -130,7 +130,7 @@ body.ytm-custom-layout ytmusic-search-box {
   margin-left: 96px;
 }
 
-
+/* 左カラム */
 #ytm-custom-left-col {
   display: flex;
   flex-direction: column;
@@ -155,7 +155,7 @@ body.ytm-custom-layout ytmusic-search-box {
   object-fit: cover;
 }
 
-
+/* 曲情報 */
 #ytm-custom-info-area {
   display: flex;
   flex-direction: column;
@@ -181,7 +181,7 @@ body.ytm-custom-layout ytmusic-search-box {
   margin-bottom: 24px;
 }
 
-
+/* 上部ボタン */
 #ytm-btn-area {
   display: flex;
   gap: 10px;
@@ -221,7 +221,7 @@ body.ytm-custom-layout ytmusic-search-box {
   font-size: 16px;
 }
 
-
+/* 設定パネル */
 #ytm-settings-panel {
   position: fixed;
   top: 50%;
@@ -307,7 +307,7 @@ body.ytm-custom-layout ytmusic-search-box {
   transform: translateX(18px);
 }
 
-
+/* 言語ピル */
 .ytm-lang-section {
   margin-top: 10px;
 }
@@ -349,7 +349,7 @@ body.ytm-custom-layout ytmusic-search-box {
   opacity: 1;
 }
 
-
+/* 歌詞エリア */
 #my-lyrics-container {
   width: 500px;
   height: 65vh;
@@ -536,7 +536,7 @@ body.ytm-custom-layout ytmusic-player-bar {
   transform: translateX(-50%) !important;
   width: 95% !important;
   max-width: 975px !important;
-  height: 90px !important;
+  height: 80px !important;
   border-radius: 40px !important;
   background: rgba(20, 20, 20, 0.6) !important;
   backdrop-filter: blur(60px) saturate(180%) !important;
@@ -577,21 +577,7 @@ body.ytm-custom-layout .middle-controls {
   overflow: visible !important;
   position: relative !important;
 }
-/* ホバーしたときの時間表示 */
-body.ytm-custom-layout ytmusic-player-bar #hover-time-info-new {
-  font-family: Roboto, Noto Naskh Arabic UI, Arial, sans-serif !important;
-  font-size: var(--ytmusic-caption-1-font-size) !important;
-  line-height: var(--ytmusic-title-line-height) !important;
-  font-weight: 400 !important;
-  color: #aaa !important;
-  color: #fff !important;
-  position: absolute !important;
-  top: -8px !important;
-  transform: translate3d(-50%, -100%, 0) !important;
-  padding: 4px 8px !important;
-  background-color: rgba(0, 0, 0, 0.2);
-  border-radius: 6px !important;
-}
+
 /* プレイヤーバー内の曲情報は使わない */
 body.ytm-custom-layout .content-info-wrapper .style-scope {
   display: none !important;
@@ -602,8 +588,8 @@ body.ytm-custom-layout ytmusic-player-bar .right-controls {
   display: flex !important;
   align-items: center !important;
   gap: 10px !important;
-margin-right: 12px !important; 
 }
+
 /* ボタン・テキストの色 */
 body.ytm-custom-layout ytmusic-player-bar tp-yt-iron-icon,
 body.ytm-custom-layout ytmusic-player-bar .time-info,
@@ -683,9 +669,9 @@ body.ytm-custom-layout ytmusic-player-bar .middle-controls
   min-width: 0 !important;
   width: 100% !important;
   margin: 0 16px !important;
-  padding: 4px 0 !important;
+  padding: 0 !important;
   box-sizing: border-box !important;
-  height: 40px !important;
+  height: 32px !important;
   display: flex !important;
   align-items: center !important;
   position: relative !important;
@@ -694,7 +680,7 @@ body.ytm-custom-layout ytmusic-player-bar .middle-controls
 
 body.ytm-custom-layout ytmusic-player-bar
   tp-yt-paper-slider#progress-bar [role="slider"] {
-  overflow: visible !important;
+  overflow: clip !important;
   border-radius: 35px !important;
   padding: 0 35px !important;
   box-sizing: border-box !important;
@@ -735,7 +721,6 @@ body:not(.ytm-custom-layout) ytmusic-player-bar tp-yt-paper-slider#progress-bar 
   padding: 0 !important;
   height: 20px !important;
   z-index: 10 !important;
-
 }
 
 body:not(.ytm-custom-layout) #player-bar-background {
@@ -762,21 +747,6 @@ body:not(.ytm-custom-layout) ytmusic-player-bar .right-controls .toggle-player-p
   order: 100 !important;
 }
 
-
-body:not(.ytm-custom-layout) ytmusic-player-bar #hover-time-info-new {
-  font-family: Roboto, Noto Naskh Arabic UI, Arial, sans-serif !important;
-  font-size: var(--ytmusic-caption-1-font-size) !important;
-  line-height: var(--ytmusic-title-line-height) !important;
-  font-weight: 400 !important;
-  color: #aaa !important;
-  color: #fff !important;
-  position: absolute !important;
-  top: -8px !important;
-  transform: translate3d(-50%, -100%, 0) !important;
-  padding: 4px 8px !important;
-  background-color: rgba(50,50,50,0.40);
-  border-radius: 6px !important;
-}
 /* Lyricsアップロードメニュー */
 .ytm-upload-menu {
   position: absolute;
@@ -869,6 +839,15 @@ body:not(.ytm-custom-layout) ytmusic-player-bar #hover-time-info-new {
 
 .ytm-upload-menu-item-candidate {
   font-size: 12px;
+}
+
+/* ★ 追加: アーティスト切り替えメニュー内のリスト */
+.ytm-switch-menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 260px;
+  overflow-y: auto;
 }
 
 /* 歌詞削除ダイアログ */
@@ -1034,10 +1013,10 @@ body:not(.ytm-custom-layout) ytmusic-player-bar #hover-time-info-new {
     bottom: auto;
     right: 56px;
     transform-origin: top right;
-}
+  }
 }
 
-
+/* フォールバック通知トースト */
 #ytm-fallback-toast,
 #ytm-toast {
   position: fixed;
@@ -1060,742 +1039,15 @@ body:not(.ytm-custom-layout) ytmusic-player-bar #hover-time-info-new {
 #ytm-fallback-toast.visible,
 #ytm-toast.visible {
   opacity: 1;
-  transform: translateY(4px);
+  transform: translateY(0);
 }
+
 .ytm-upload-menu-item.ytm-upload-menu-item-disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
-
+/* もし hover 時の色変化も止めたいなら上書き */
 .ytm-upload-menu-item.ytm-upload-menu-item-disabled:hover {
   background: transparent;
-}
-
-
-body.ytm-custom-layout ytmusic-player-bar {
-  position: fixed !important;
-  bottom: 40px !important;
-  left: 50% !important;
-  transform: translateX(-50%) !important;
-  width: 95% !important;
-  max-width: 975px !important;
-  height: 80px !important;
-  border-radius: 40px !important;
-  background: rgba(20, 20, 20, 0.6) !important;
-  backdrop-filter: blur(60px) saturate(180%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
-  display: flex !important;
-  flex-wrap: nowrap !important;
-  justify-content: space-between !important;
-  align-items: center !important;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5) !important;
-  
- 
-  padding: 0 32px !important; 
-  
-  z-index: 2000 !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  
-
-  overflow: hidden !important; 
-}
-
-
-body.ytm-custom-layout ytmusic-player-bar .right-controls .toggle-player-page-button,
-body.ytm-custom-layout ytmusic-player-bar .right-controls .expand-btn,
-body.ytm-custom-layout ytmusic-player-bar .right-controls tp-yt-paper-icon-button.expand-btn {
-  
-    margin-right: 12px !important; 
-    
-    padding: 0 12px !important; 
-    
-    
-    min-width: unset !important;
-}
-
-
-body.ytm-custom-layout ytmusic-player-bar .right-controls {
-    margin-right: 16px !important;
-}
-
-body.ytm-custom-layout ytmusic-player-bar .right-controls .toggle-player-page-button,
-body.ytm-custom-layout ytmusic-player-bar .right-controls .expand-btn,
-body.ytm-custom-layout ytmusic-player-bar .right-controls tp-yt-paper-icon-button {
-
-    margin-right: 16px !important; 
-   
-    padding: 8px 12px !important; 
-}
-
-
-body.ytm-custom-layout ytmusic-player-bar .thumbnail-image-wrapper {
-  display: none !important; 
-}
-
-
-body.ytm-custom-layout .middle-controls {
-    margin: 0 5px !important; 
-}
-
-
-body.ytm-custom-layout ytmusic-player-bar .middle-controls tp-yt-paper-slider#progress-bar {
-    
-    overflow: visible !important; 
-    
-    
-    padding-bottom: 2px !important; 
-}
-
-
-body.ytm-custom-layout ytmusic-player-bar .middle-controls tp-yt-paper-slider#progress-bar {
-  
-    transform: translateY(4px) !important; 
-}
-
-
-body.ytm-custom-layout ytmusic-player-bar {
-
-    height: 80px !important; 
-    
-
-    padding-top: 5px !important;
-
-    padding-left: 32px !important;
-    padding-right: 32px !important; 
-    padding-bottom: 0 !important; 
-}
-
-
-body.ytm-custom-layout ytmusic-player-bar .middle-controls
-  tp-yt-paper-slider#progress-bar {
-  
-    transform: none !important; 
-    height: 32px !important; 
-    padding: 0 !important;
-    
-        overflow: visible !important;
-}
-
-body.ytm-custom-layout ytmusic-player-bar
-  tp-yt-paper-slider#progress-bar [role="slider"] {
-    overflow: visible !important;
-}
-
-
-#ytm-replay-panel {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 90vw;
-  height: 85vh;
-  max-width: 1200px;
-  max-height: 900px;
-  padding: 40px;
-  background: rgba(10, 10, 12, 0.85);
-  border-radius: 32px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  z-index: 100000;
-  display: none;
-  flex-direction: column;
-  color: #fff;
-  backdrop-filter: blur(50px) saturate(180%);
-  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.8);
-  overflow: hidden;
-}
-
-#ytm-replay-panel.active {
-  display: flex;
-  animation: popIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes popIn {
-  from { opacity: 0; transform: translate(-50%, -45%) scale(0.96); }
-  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-}
-
-
-#ytm-replay-panel h3 {
-  margin: 0 0 20px 0;
-  font-size: 32px;
-  font-weight: 900;
-  letter-spacing: -1px;
-  background: linear-gradient(135deg, #fff 0%, #888 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.replay-close-btn {
-  position: absolute;
-  right: 30px;
-  top: 30px;
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
-  color: #fff;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  cursor: pointer;
-  font-size: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: 0.2s;
-  z-index: 10;
-}
-
-.replay-close-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
-  transform: scale(1.1);
-}
-
-.ytm-replay-content {
-  flex: 1;
-  height: 100%;
-  overflow: hidden;
-}
-
-.bento-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1.3fr; 
-  grid-template-rows: 1fr 1fr 1fr;        gap: 20px;
-  height: 100%;
-  width: 100%;
-  padding-bottom: 20px;
-}
-
-
-.bento-item {
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: 24px;
-  padding: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  overflow: hidden;
-  transition: transform 0.3s ease;
-}
-
-.bento-item:hover {
-  background: rgba(255, 255, 255, 0.07);
-  border-color: rgba(255, 255, 255, 0.1);
-}
-
-.bento-label {
-  font-size: 13px;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.4);
-  margin-bottom: 8px;
-  letter-spacing: 0.5px;
-}
-
-
-.hero-stat-time {
-  grid-column: 1 / 2;
-  grid-row: 1 / 2;
-  justify-content: center;
-  background: linear-gradient(135deg, rgba(255,50,50,0.1), rgba(255,255,255,0.03));
-}
-
-.bento-value-huge {
-  font-size: 56px;
-  font-weight: 800;
-  line-height: 1;
-  letter-spacing: -2px;
-  margin: 10px 0;
-  background: linear-gradient(to right, #fff, #bbb);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.bento-sub {
-  font-size: 15px;
-  opacity: 0.6;
-}
-
-
-.hero-song {
-  grid-column: 2 / 3;
-  grid-row: 1 / 3; 
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  padding: 0;
-  border: none;
-  background-color: transparent !important; 
-  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-}
-
-.hero-song:hover {
-  background-size: cover !important;
-  background-position: center !important;
-  border-color: rgba(255, 255, 255, 0.1) !important;
-}
-
-.bento-overlay {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(to bottom, rgba(0,0,0,0) 20%, rgba(0,0,0,0.9) 100%);
-  padding: 30px;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-}
-
-.bento-song-title {
-  font-size: 28px;
-  font-weight: 800;
-  line-height: 1.25;
-  margin-bottom: 4px;
-  text-shadow: 0 4px 12px rgba(0,0,0,0.5);
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  word-break: auto-phrase;
-  overflow-wrap: break-word;
-}
-
-.bento-song-artist {
-  font-size: 18px;
-  opacity: 0.9;
-  font-weight: 600;
-  margin-bottom: 12px;
-}
-
-.bento-badge {
-  display: inline-block;
-  background: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(10px);
-  padding: 6px 14px;
-  border-radius: 99px;
-  font-size: 12px;
-  font-weight: 700;
-  width: fit-content;
-}
-
-
-.hero-vibe {
-  grid-column: 1 / 2;
-  grid-row: 2 / 3;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-
-  background: linear-gradient(135deg, rgba(123, 67, 151, 0.2), rgba(220, 36, 48, 0.1)) !important;
-}
-
-.bento-vibe-text {
-  background: linear-gradient(to right, #fff, #ddd);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-
-.hero-artist {
-  grid-column: 1 / 2;
-  grid-row: 3 / 4;
-  justify-content: center;
-  background: linear-gradient(135deg, rgba(50,100,255,0.1), rgba(255,255,255,0.03));
-}
-
-.bento-artist-name {
-  font-size: 24px;
-  font-weight: 800;
-  margin: 10px 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-
-
-.hero-lyrics {
-  grid-column: 2 / 3;
-  grid-row: 3 / 4;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
- 
-  background: linear-gradient(135deg, rgba(29, 151, 108, 0.2), rgba(147, 249, 185, 0.1)) !important;
-}
-
-
-.ranking-list-container {
-  grid-column: 3 / 4;
-  grid-row: 1 / 4; 
-  padding-bottom: 0;
-}
-
-.replay-list {
-  overflow-y: auto;
-  padding-right: 10px;
-  margin-top: 10px;
-  height: 100%;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255,255,255,0.2) transparent;
-}
-
-.replay-list::-webkit-scrollbar {
-  width: 6px;
-}
-.replay-list::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.2);
-  border-radius: 3px;
-}
-
-.replay-item {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 12px;
-  border-radius: 12px;
-  transition: 0.2s;
-  cursor: default;
-  margin-bottom: 4px;
-}
-
-.replay-item:hover {
-  background: rgba(255, 255, 255, 0.1);
-  transform: translateX(4px);
-}
-
-.replay-rank {
-  font-size: 16px;
-  font-weight: 700;
-  color: rgba(255,255,255,0.4);
-  width: 24px;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-}
-
-.replay-img {
-  width: 64px !important;
-  height: 64px !important;
-  min-width: 64px !important;
-  max-width: 64px !important;
-  border-radius: 8px;
-  overflow: hidden;
-  background: #000;
-  flex-shrink: 0;
-  margin-right: 16px;
-}
-
-.replay-img img {
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: contain;
-  display: block;
-}
-
-.replay-title {
-  font-size: 15px;
-  font-weight: 700;
-  margin-bottom: 2px;
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  word-break: break-all;
-}
-
-.replay-artist {
-  font-size: 12px;
-  opacity: 0.6;
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.replay-count {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  justify-content: center;
-  margin-left: auto;
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
-.replay-count-val {
-  font-size: 14px;
-  font-weight: 700;
-  opacity: 1;
-  line-height: 1.2;
-}
-
-.replay-time-val {
-  font-size: 10px;
-  font-weight: 500;
-  opacity: 0.5;
-  margin-top: 2px;
-  font-feature-settings: "tnum";
-}
-
-.replay-footer-btn {
-  position: absolute;
-  bottom: 25px;
-  right: 30px;
-  background: transparent;
-  border: none;
-  color: rgba(255, 255, 255, 0.2);
-  font-size: 11px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  letter-spacing: 0.5px;
-  padding: 5px 10px;
-  border-radius: 8px;
-}
-
-.replay-footer-btn:hover {
-  color: rgba(255, 60, 60, 1);
-  background: rgba(255, 60, 60, 0.1);
-}
-
-.replay-empty {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-  opacity: 0.5;
-  font-weight: 600;
-}
-
-/* 縦画面対応 */
-@media (orientation: portrait) {
-  #ytm-replay-panel {
-    width: 95vw;
-    height: 90vh;
-    padding: 24px;
-  }
-  
-  .bento-grid {
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
-  }
-  
-  .hero-song {
-    min-height: 250px;
-  }
-  
-  .ranking-list-container {
-    min-height: 300px;
-  }
-}
-
-
-
-#ytm-queue-trigger {
-  position: fixed;
-  top: 0;
-  right: 0;
-  width: 20px; 
-  height: 100vh;
-  z-index: 9998;
-  cursor: w-resize;
-}
-
-
-#ytm-queue-panel {
-  position: fixed;
-  top: 20px;
-  right: -420px;
-  width: 380px;
-  height: calc(100vh - 140px);
-  background: rgba(20, 20, 25, 0.85);
-  backdrop-filter: blur(40px) saturate(180%);
-  border-radius: 24px 0 0 24px;
-  border-left: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: -20px 0 60px rgba(0, 0, 0, 0.5);
-  z-index: 9999;
-  
-
-  transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
-  
-  display: flex;
-  flex-direction: column;
-  padding: 24px;
-  color: #fff;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-}
-
-
-#ytm-queue-panel.visible {
-  right: 0;
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-}
-
-#ytm-queue-panel h3 {
-  margin: 0 0 20px 0;
-  font-size: 20px;
-  font-weight: 800;
-  opacity: 0.9;
-}
-
-
-.queue-list-content {
-  flex: 1;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  scrollbar-width: none; /* Firefox用 */
-  padding-bottom: 20px;
-}
-
-.queue-list-content::-webkit-scrollbar {
-  display: none; 
-}
-
-
-.queue-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: background 0.2s;
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.queue-item:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.queue-item.current {
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-}
-
-
-.queue-img {
-  width: 44px;
-  height: 44px;
-  border-radius: 6px;
-  overflow: hidden;
-  flex-shrink: 0;
-  position: relative;
-  background: #222;
-}
-
-.queue-img img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-
-.queue-playing-indicator {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-}
-
-.queue-playing-indicator i {
-  display: block;
-  width: 4px;
-  background: #fff;
-  border-radius: 2px;
-  animation: eq-bounce 0.8s ease-in-out infinite;
-  box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
-}
-
-.queue-playing-indicator i:nth-child(1) { height: 10px; animation-delay: 0s; }
-.queue-playing-indicator i:nth-child(2) { height: 16px; animation-delay: 0.2s; }
-.queue-playing-indicator i:nth-child(3) { height: 8px; animation-delay: 0.4s; }
-
-@keyframes eq-bounce {
-  0%, 100% { transform: scaleY(0.5); opacity: 0.7; }
-  50% { transform: scaleY(1); opacity: 1; }
-}
-
-
-.queue-info {
-  flex: 1;
-  overflow: hidden;
-}
-
-.queue-title {
-  font-size: 14px;
-  font-weight: 700;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-bottom: 2px;
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.queue-item.current .queue-title {
-  color: #fff;
-  text-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
-}
-
-.queue-artist {
-  font-size: 12px;
-  opacity: 0.6;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.replay-footer-area {
-  position: absolute;
-  bottom: 30px;
-  right: 30px;
-  display: flex;
-  gap: 12px; 
-  z-index: 100;
-}
-
-
-.replay-footer-btn {
- 
-  position: static !important; 
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  letter-spacing: 0.5px;
-  padding: 8px 16px;
-  border-radius: 99px; 
-  backdrop-filter: blur(4px);
-}
-
-.replay-footer-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-  color: #fff;
-  transform: translateY(-2px);
-}
-
-
-#replay-reset-action:hover {
-  background: rgba(255, 60, 60, 0.2);
-  color: #ff5555;
-  border-color: rgba(255, 60, 60, 0.3);
 }
