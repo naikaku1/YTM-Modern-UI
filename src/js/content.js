@@ -85,8 +85,6 @@ const TEXTS = {
   let lastActiveIndex = -1;
   let lastTimeForChars = -1;
   let lyricRafId = null;
-  
-  let timeOffset = 0;
 
   let shareMode = false;
   let shareStartIndex = null;
@@ -703,6 +701,7 @@ const TEXTS = {
     }
   };
 
+  /* ========================================================= */
 
   const resolveDeepLTargetLang = (lang) => {
     switch ((lang || '').toLowerCase()) {
@@ -791,7 +790,7 @@ const TEXTS = {
       const info = document.querySelector('#hover-time-info-new');
       const slider = document.querySelector(
         'tp-yt-paper-slider#progress-bar tp-yt-paper-progress#sliderBar #primaryProgress'
-      ).parentElement.parentElement;/
+      ).parentElement.parentElement;//確実に指定したい
       const playerBar = document.querySelector('ytmusic-player-bar');
       const refresh = () => {
         const onMove = (e) => {
@@ -799,8 +798,8 @@ const TEXTS = {
           const infoLeft = e.clientX - marginLeft;
           const relativeMouseX = e.clientX - marginLeft;
           const timeinfo = document.querySelector('#left-controls > span')
-          const songLengthSeconds = timeToSeconds(timeinfo.textContent.replace(/^[^/]+\/\s*/, "")); 
-          const relativePosition = Math.round((Math.min(1,Math.max(0,(relativeMouseX / slider.offsetWidth)))) * 1000) /1000;
+          const songLengthSeconds = timeToSeconds(timeinfo.textContent.replace(/^[^/]+\/\s*/, "")); //曲の長さを取得
+          const relativePosition = Math.round((Math.min(1,Math.max(0,(relativeMouseX / slider.offsetWidth)))) * 1000) /1000;//0~1の範囲にして小数点3位までに四捨五入する
           const hoverTimeSeconds = Math.floor(songLengthSeconds * relativePosition);
           const hoverTimeString = `${String(Math.floor(hoverTimeSeconds / 60))}:${String(hoverTimeSeconds % 60).padStart(2, '0')}`;
           info.style.display = 'block';
@@ -1897,20 +1896,8 @@ const TEXTS = {
         lyricRafId = requestAnimationFrame(loop);
         return;
       }
-
-  
-      let t = v.currentTime;
-
-    
-      if (timeOffset > 0 && t < timeOffset) {
-        timeOffset = 0;
-      }
-
-    
-      t = Math.max(0, t - timeOffset);
-      
-
       if (document.body.classList.contains('ytm-custom-layout') && lyricsData.length && hasTimestamp && !v.paused && !v.ended) {
+        const t = v.currentTime;
         if (t !== lastTimeForChars) {
           lastTimeForChars = t;
           updateLyricHighlight(t);
@@ -2204,7 +2191,7 @@ const TEXTS = {
     }
   }
 
-const tick = async () => {
+  const tick = async () => {
     if (!document.getElementById('my-mode-toggle')) {
       const rc = document.querySelector('.right-controls-buttons');
       if (rc) {
@@ -2238,18 +2225,7 @@ const tick = async () => {
     const meta = getMetadata();
     if (!meta) return;
     const key = `${meta.title}///${meta.artist}`;
-    
-   
     if (currentKey !== key) {
-    
-      const v = document.querySelector('video');
-      if (currentKey === null) {
-        timeOffset = 0; 
-      } else {
-        timeOffset = v ? v.currentTime : 0; 
-      }
-     
-
       currentKey = key;
       lyricsData = [];
       dynamicLines = null;
@@ -2275,7 +2251,7 @@ const tick = async () => {
       if (ui.lyrics) ui.lyrics.scrollTop = 0;
       loadLyrics(meta);
     }
-      };
+  };
 
   function updateMetaUI(meta) {
     ui.title.innerText = meta.title;
