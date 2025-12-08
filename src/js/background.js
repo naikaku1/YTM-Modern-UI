@@ -1,22 +1,510 @@
+const CLOUD_STORAGE_KEY = 'dailyReplayCloudState';
+
+const DEFAULT_CLOUD_STATE = {
+  serverBaseUrl: 'http://immersionproject.coreone.work',
+  // Discord ログインページのパス
+  loginPath: '/auth/discord',
+  // 復活の呪文（サーバー側で発行される ID）
+  recoveryToken: null,
+  lastSyncAt: null,
+  lastSyncInfo: null,
+};
+
+function loadCloudState() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(CLOUD_STORAGE_KEY, (items) => {
+      const stored = items && items[CLOUD_STORAGE_KEY] ? items[CLOUD_STORAGE_KEY] : {};
+      resolve(Object.assign({}, DEFAULT_CLOUD_STATE, stored));
+    });
+  });
+}
+
+async function saveCloudState(patchOrNew) {
+  const current = await loadCloudState();
+  const merged =
+    typeof patchOrNew === 'function'
+      ? patchOrNew(current)
+      : Object.assign({}, current, patchOrNew || {});
+  return new Promise((resolve) => {
+    chrome.storage.local.set({ [CLOUD_STORAGE_KEY]: merged }, () => resolve(merged));
+  });
+}
+
+async function cloudSyncHistory(history) {
+  const state = await loadCloudState();
+  if (!state.recoveryToken) {
+    return { ok: false, error: 'NO_TOKEN' };
+  }
+
+  const base = (state.serverBaseUrl || DEFAULT_CLOUD_STATE.serverBaseUrl || '').replace(/\/+$/, '');
+  const url = base + '/api/history';
+
+  const payload = {
+    // ★サーバー側の history_api は "code" を見る
+    code: state.recoveryToken,
+    history: Array.isArray(history) ? history : [],
+  };
+
+  let res;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  } catch (e) {
+    return { ok: false, error: 'NETWORK_ERROR: ' + e };
+  }
+
+  let data = null;
+  try {
+    data = await res.json();
+  } catch (e) {
+  }
+
+  if (!res.ok) {
+    return {
+      ok: false,
+      error: 'HTTP_' + res.status + (data && data.error ? ':' + data.error : ''),
+    };
+  }
+
+  const mergedHistory = data && Array.isArray(data.history) ? data.history : null;
+
+  const now = Date.now();
+  const info = {
+    sentCount: payload.history.length,
+    serverCount: mergedHistory ? mergedHistory.length : null,
+  };
+
+  await saveCloudState({
+    lastSyncAt: now,
+    lastSyncInfo: info,
+  });
+
+  return {
+    ok: true,
+    mergedHistory,
+    lastSyncAt: now,
+    lastSyncInfo: info,
+  };
+}
+
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.storage.local.get(CLOUD_STORAGE_KEY, (items) => {
+    if (!items || !items[CLOUD_STORAGE_KEY]) {
+      chrome.storage.local.set({ [CLOUD_STORAGE_KEY]: DEFAULT_CLOUD_STATE });
+    }
+  });
+});
+
+const normalizeArtist = (s) =>
+  (s || '').toLowerCase().replace(/\s+/g, '').trim();
+
+const pickBestLrcLibHit = (items, artist) => {
+  if (!Array.isArray(items) || !items.length) return null;
+  const target = normalizeArtist(artist);
+  const getArtistName = (it) =>
+    it.artistName || it.artist || it.artist_name || '';
+
+  let hit = null;
+
+  if (target) {
+    hit = items.find(it => {
+      const a = normalizeArtist(getArtistName(it));
+      return a && a === target && (it.syncedLyrics || it.synced_lyrics);
+    });
+    if (hit) return hit;
+
+    hit = items.find(it => {
+      const a = normalizeArtist(getArtistName(it));
+      return a && a === target && (it.plainLyrics || it.plain_lyrics);
+    });
+    if (hit) return hit;
+
+    hit = items.find(it => {
+      const a = normalizeArtist(getArtistName(it));
+      return a && (a.includes(target) || target.includes(a)) && (it.syncedLyrics || it.synced_lyrics);
+    });
+    if (hit) return hit;
+
+    hit = items.find(it => {
+      const a = normalizeArtist(getArtistName(it));
+      return a && (a.includes(target) || target.includes(a)) && (it.plainLyrics || it.plain_lyrics);
+    });
+    if (hit) return hit;
+  }
+
+  hit = items.find(it => it.syncedLyrics || it.synced_lyrics);
+  if (hit) return hit;
+
+  hit = items.find(it => it.plainLyrics || it.plain_lyrics);
+  if (hit) return hit;
+
+  return items[0];
+};
+
+const fetchFromLrcLib = (track, artist) => {
+  if (!track) return Promise.resolve('');
+  const url = `https://lrclib.net/api/search?track_name=${encodeURIComponent(track)}`;
+  console.log('[BG] LrcLib search URL:', url);
+
+  return fetch(url)
+    .then(r => (r.ok ? r.json() : Promise.reject(r.statusText)))
+    .then(list => {
+      console.log('[BG] LrcLib search result count:', Array.isArray(list) ? list.length : 'N/A');
+      const items = Array.isArray(list) ? list : [];
+      const hit = pickBestLrcLibHit(items, artist);
+      if (!hit) return '';
+
+      const synced = hit.syncedLyrics || hit.synced_lyrics || '';
+      const plain = hit.plainLyrics || hit.plain_lyrics || hit.plain_lyrics_text || '';
+      const lyrics = (synced || plain || '').trim();
+      console.log('[BG] LrcLib chosen track:', {
+        trackName: hit.trackName || hit.track || '',
+        artistName: hit.artistName || hit.artist || '',
+      });
+      return lyrics;
+    })
+    .catch(err => {
+      console.error('[BG] LrcLib error:', err);
+      return '';
+    });
+};
+
+const formatLrcTime = (seconds) => {
+  const total = Math.max(0, seconds);
+  const min = Math.floor(total / 60);
+  const sec = Math.floor(total - min * 60);
+  const cs = Math.floor((total - min * 60 - sec) * 100);
+  const mm = String(min).padStart(2, '0');
+  const ss = String(sec).padStart(2, '0');
+  const cc = String(cs).padStart(2, '0');
+  return `${mm}:${ss}.${cc}`;
+};
+
+const fetchCandidatesFromUrl = (url) => {
+  if (!url) {
+    return Promise.resolve({
+      candidates: [],
+      hasSelectCandidates: false,
+      config: null,
+      requests: [],
+    });
+  }
+
+  try {
+    const base = 'https://lrchub.coreone.work';
+    const u = new URL(url, base);
+    u.protocol = 'https:';
+    if (!u.searchParams.has('include_lyrics')) {
+      u.searchParams.set('include_lyrics', '1');
+    }
+    url = u.toString();
+  } catch (e) {
+    console.warn('[BG] invalid candidates url:', url, e);
+  }
+
+  console.log('[BG] fetchCandidatesFromUrl:', url);
+
+  return fetch(url)
+    .then(async (r) => {
+      let json;
+      try {
+        json = await r.json();
+      } catch (e) {
+        throw new Error(r.statusText || 'Invalid JSON');
+      }
+
+      const res = json.response || json;
+      const list = Array.isArray(res.candidates) ? res.candidates : [];
+      const config = res.config || null;
+      const requests = Array.isArray(res.requests) ? res.requests : [];
+
+      console.log(
+        '[BG] candidates result:',
+        'status=', r.status,
+        'code=', res.code,
+        'candidates=', list.length,
+        'requests=', requests.length
+      );
+
+      const hasSelectCandidates = list.length > 1;
+
+      return {
+        candidates: list,
+        hasSelectCandidates,
+        config,
+        requests,
+      };
+    })
+    .catch(err => {
+      console.error('[BG] candidates error:', err);
+      return { candidates: [], hasSelectCandidates: false, config: null, requests: [] };
+    });
+};
+
+const buildCandidatesUrl = (res, payloadVideoId) => {
+  const base = 'https://lrchub.coreone.work';
+  const raw = res.candidates_api_url || '';
+
+  try {
+    if (raw) {
+      const u = new URL(raw, base);
+      u.protocol = 'https:';
+      if (!u.searchParams.has('include_lyrics')) {
+        u.searchParams.set('include_lyrics', '1');
+      }
+      return u.toString();
+    }
+  } catch (e) {
+    console.warn('[BG] buildCandidatesUrl from api url failed:', e);
+  }
+
+  const vid = res.video_id || payloadVideoId;
+  if (!vid) return null;
+  const u = new URL('/api/lyrics_candidates', base);
+  u.searchParams.set('video_id', vid);
+  u.searchParams.set('include_lyrics', '1');
+  return u.toString();
+};
+
+const fetchFromLrchub = (track, artist, youtube_url, video_id) => {
+  return fetch('https://lrchub.coreone.work/api/lyrics', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ track, artist, youtube_url, video_id }),
+  })
+    .then(r => r.text())
+    .then(text => {
+      let lyrics = '';
+      let dynamicLines = null;
+      let hasSelectCandidates = false;
+      let candidates = [];
+      let config = null;
+      let requests = [];
+
+      try {
+        const json = JSON.parse(text);
+        console.log('[BG] Lyrics API JSON:', json);
+        const res = json.response || json;
+
+        hasSelectCandidates = !!res.has_select_candidates;
+        config = res.config || null;
+        requests = Array.isArray(res.requests) ? res.requests : [];
+
+        if (
+          res.dynamic_lyrics &&
+          Array.isArray(res.dynamic_lyrics.lines) &&
+          res.dynamic_lyrics.lines.length
+        ) {
+          dynamicLines = res.dynamic_lyrics.lines;
+
+          const lrcLines = dynamicLines
+            .map(line => {
+              let ms = null;
+              if (typeof line.startTimeMs === 'number') {
+                ms = line.startTimeMs;
+              } else if (typeof line.startTimeMs === 'string') {
+                const n = Number(line.startTimeMs);
+                if (!Number.isNaN(n)) ms = n;
+              }
+              if (ms == null) return null;
+
+              let textLine = '';
+              if (typeof line.text === 'string' && line.text.length) {
+                textLine = line.text;
+              } else if (Array.isArray(line.chars)) {
+                textLine = line.chars
+                  .map(c => c.c || c.text || c.caption || '')
+                  .join('');
+              }
+
+              textLine = (textLine || '').trim();
+              const timeTag = `[${formatLrcTime(ms / 1000)}]`;
+              return textLine ? `${timeTag} ${textLine}` : timeTag;
+            })
+            .filter(Boolean);
+
+          lyrics = lrcLines.join('\n');
+        } else {
+          const synced = typeof res.synced_lyrics === 'string' ? res.synced_lyrics.trim() : '';
+          const plain = typeof res.plain_lyrics === 'string' ? res.plain_lyrics.trim() : '';
+          if (synced) lyrics = synced;
+          else if (plain) lyrics = plain;
+        }
+
+        const url = buildCandidatesUrl(res, video_id);
+        if (url) {
+          return fetchCandidatesFromUrl(url).then(cRes => {
+            candidates = cRes.candidates;
+            hasSelectCandidates = !!(hasSelectCandidates || cRes.hasSelectCandidates);
+
+            if (cRes.config) {
+              config = cRes.config;
+            }
+
+            if (Array.isArray(cRes.requests) && cRes.requests.length) {
+              requests = cRes.requests;
+            }
+
+            return {
+              lyrics,
+              dynamicLines,
+              hasSelectCandidates,
+              candidates,
+              config,
+              requests,
+            };
+          });
+        }
+      } catch (e) {
+        console.warn('[BG] Lyrics API response parse failed', e);
+      }
+
+      return { lyrics, dynamicLines, hasSelectCandidates, candidates, config, requests };
+    });
+};
+
+const fetchFromGithub = (video_id) => {
+  if (!video_id) return Promise.resolve('');
+  const url = `https://raw.githubusercontent.com/LRCHub/${video_id}/main/README.md`;
+  console.log('[BG] GitHub fallback URL:', url);
+  return fetch(url)
+    .then(r => (r.ok ? r.text() : ''))
+    .then(text => (text || '').trim())
+    .catch(err => {
+      console.error('[BG] GitHub fallback error:', err);
+      return '';
+    });
+};
+
+const extractVideoIdFromUrl = (youtube_url) => {
+  if (!youtube_url) return null;
+  try {
+    const u = new URL(youtube_url);
+    if (u.hostname === 'youtu.be') {
+      const id = u.pathname.replace('/', '');
+      return id || null;
+    }
+    const v = u.searchParams.get('v');
+    return v || null;
+  } catch (e) {
+    return null;
+  }
+};
+
+const withTimeout = (promise, ms, label) => {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error(label || 'timeout')), ms);
+    }),
+  ]);
+};
+
 chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
+  if (!req || typeof req !== 'object' || !req.type) {
+    return;
+  }
+
+  // Cloud Sync 状態取得
+  if (req.type === 'GET_CLOUD_STATE') {
+    loadCloudState()
+      .then(state => {
+        sendResponse({ ok: true, state });
+      })
+      .catch(err => {
+        sendResponse({ ok: false, error: err && err.message ? err.message : String(err) });
+      });
+    return true;
+  }
+
+  // 復活の呪文保存
+  if (req.type === 'SAVE_RECOVERY_TOKEN') {
+    const token = typeof req.token === 'string' ? req.token.trim() : '';
+    saveCloudState({ recoveryToken: token || null })
+      .then(state => {
+        sendResponse({ ok: true, state });
+      })
+      .catch(err => {
+        sendResponse({ ok: false, error: err && err.message ? err.message : String(err) });
+      });
+    return true;
+  }
+
+  // サーバーURL
+  if (req.type === 'SET_SERVER_BASE_URL') {
+    const url = typeof req.serverBaseUrl === 'string' ? req.serverBaseUrl.trim() : '';
+    saveCloudState({ serverBaseUrl: url || DEFAULT_CLOUD_STATE.serverBaseUrl })
+      .then(state => {
+        sendResponse({ ok: true, state });
+      })
+      .catch(err => {
+        sendResponse({ ok: false, error: err && err.message ? err.message : String(err) });
+      });
+    return true;
+  }
+
+  // ログインページ
+  if (req.type === 'OPEN_LOGIN_PAGE') {
+    (async () => {
+      try {
+        const state = await loadCloudState();
+        const base = (state.serverBaseUrl || DEFAULT_CLOUD_STATE.serverBaseUrl || '').replace(/\/+$/, '');
+        const loginPath = state.loginPath || DEFAULT_CLOUD_STATE.loginPath || '/auth/discord';
+        const url = base + loginPath;
+        chrome.tabs.create({ url }, () => {
+          const lastError = chrome.runtime.lastError;
+          if (lastError) {
+            sendResponse({ ok: false, error: lastError.message || String(lastError) });
+          } else {
+            sendResponse({ ok: true, url });
+          }
+        });
+      } catch (e) {
+        sendResponse({ ok: false, error: e && e.message ? e.message : String(e) });
+      }
+    })();
+    return true;
+  }
+
+  // 再生履歴のクラウド同期
+  if (req.type === 'SYNC_HISTORY') {
+    const history =
+      Array.isArray(req.history)
+        ? req.history
+        : (req.payload && Array.isArray(req.payload.history) ? req.payload.history : []);
+    (async () => {
+      try {
+        const result = await cloudSyncHistory(history);
+        sendResponse(result);
+      } catch (e) {
+        sendResponse({ ok: false, error: e && e.message ? e.message : String(e) });
+      }
+    })();
+    return true;
+  }
+
+  // DeepL 翻訳
   if (req.type === 'TRANSLATE') {
     const { text, apiKey, targetLang } = req.payload;
-    const endpoint = apiKey.endsWith(':fx')
+    const endpoint = apiKey && apiKey.endsWith(':fx')
       ? 'https://api-free.deepl.com/v2/translate'
       : 'https://api.deepl.com/v2/translate';
 
     const body = {
       text,
-      target_lang: targetLang || 'JA'
+      target_lang: targetLang || 'JA',
     };
 
     fetch(endpoint, {
       method: 'POST',
       headers: {
-        'Authorization': `DeepL-Auth-Key ${apiKey}`,
-        'Content-Type': 'application/json'
+        Authorization: `DeepL-Auth-Key ${apiKey}`,
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
     })
       .then(r => (r.ok ? r.json() : Promise.reject(r.statusText)))
       .then(data => sendResponse({ success: true, translations: data.translations }))
@@ -28,349 +516,14 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
     return true;
   }
 
-  const normalizeArtist = (s) =>
-    (s || '').toLowerCase().replace(/\s+/g, '').trim();
-
-  const pickBestLrcLibHit = (items, artist) => {
-    if (!Array.isArray(items) || !items.length) return null;
-    const target = normalizeArtist(artist);
-    const getArtistName = (it) =>
-      it.artistName || it.artist || it.artist_name || '';
-
-    let hit = null;
-
-    if (target) {
-      hit = items.find(it => {
-        const a = normalizeArtist(getArtistName(it));
-        return a && a === target && (it.syncedLyrics || it.synced_lyrics);
-      });
-      if (hit) return hit;
-
-      hit = items.find(it => {
-        const a = normalizeArtist(getArtistName(it));
-        return a && a === target && (it.plainLyrics || it.plain_lyrics);
-      });
-      if (hit) return hit;
-
-      hit = items.find(it => {
-        const a = normalizeArtist(getArtistName(it));
-        return a && (a.includes(target) || target.includes(a)) && (it.syncedLyrics || it.synced_lyrics);
-      });
-      if (hit) return hit;
-
-      hit = items.find(it => {
-        const a = normalizeArtist(getArtistName(it));
-        return a && (a.includes(target) || target.includes(a)) && (it.plainLyrics || it.plain_lyrics);
-      });
-      if (hit) return hit;
-    }
-
-    hit = items.find(it => it.syncedLyrics || it.synced_lyrics);
-    if (hit) return hit;
-
-    hit = items.find(it => it.plainLyrics || it.plain_lyrics);
-    if (hit) return hit;
-
-    return items[0];
-  };
-
-  const fetchFromLrcLib = (track, artist) => {
-    if (!track) return Promise.resolve('');
-    const url = `https://lrclib.net/api/search?track_name=${encodeURIComponent(track)}`;
-    console.log('[BG] LrcLib search URL:', url);
-
-    return fetch(url)
-      .then(r => (r.ok ? r.json() : Promise.reject(r.statusText)))
-      .then(list => {
-        console.log(
-          '[BG] LrcLib search result count:',
-          Array.isArray(list) ? list.length : 'N/A'
-        );
-        const items = Array.isArray(list) ? list : [];
-        const hit = pickBestLrcLibHit(items, artist);
-        if (!hit) return '';
-
-        const synced =
-          hit.syncedLyrics ||
-          hit.synced_lyrics ||
-          '';
-        const plain =
-          hit.plainLyrics ||
-          hit.plain_lyrics ||
-          hit.plain_lyrics_text ||
-          '';
-
-        const lyrics = (synced || plain || '').trim();
-        console.log('[BG] LrcLib chosen track:', {
-          trackName: hit.trackName || hit.track || '',
-          artistName: hit.artistName || hit.artist || ''
-        });
-        return lyrics;
-      })
-      .catch(err => {
-        console.error('[BG] LrcLib error:', err);
-        return '';
-      });
-  };
-
-  const formatLrcTime = (seconds) => {
-    const total = Math.max(0, seconds);
-    const min = Math.floor(total / 60);
-    const sec = Math.floor(total - min * 60);
-    const cs = Math.floor((total - min * 60 - sec) * 100);
-    const mm = String(min).padStart(2, '0');
-    const ss = String(sec).padStart(2, '0');
-    const cc = String(cs).padStart(2, '0');
-    return `${mm}:${ss}.${cc}`;
-  };
-
-  // ★ ここで config / requests も拾う
-  const fetchCandidatesFromUrl = (url) => {
-    if (!url) {
-      return Promise.resolve({
-        candidates: [],
-        hasSelectCandidates: false,
-        config: null,
-        requests: []
-      });
-    }
-
-    try {
-      const base = 'https://lrchub.coreone.work';
-      const u = new URL(url, base);
-      u.protocol = 'https:';
-      if (!u.searchParams.has('include_lyrics')) {
-        u.searchParams.set('include_lyrics', '1');
-      }
-      url = u.toString();
-    } catch (e) {
-      console.warn('[BG] invalid candidates url:', url, e);
-    }
-
-    console.log('[BG] fetchCandidatesFromUrl:', url);
-
-    return fetch(url)
-      .then(async (r) => {
-        // ★ ステータスに関わらず JSON を読みに行く
-        let json;
-        try {
-          json = await r.json();
-        } catch (e) {
-          throw new Error(r.statusText || 'Invalid JSON');
-        }
-
-        const res = json.response || json;
-
-        const list = Array.isArray(res.candidates) ? res.candidates : [];
-        const config = res.config || null;
-        const requests = Array.isArray(res.requests) ? res.requests : [];
-
-        console.log(
-          '[BG] candidates result:',
-          'status=', r.status,
-          'code=', res.code,
-          'candidates=', list.length,
-          'requests=', requests.length
-        );
-
-        // SELECT_NOT_FOUND のときは candidates も requests も空、config だけ生きている想定
-        const hasSelectCandidates = list.length > 1;
-
-        return {
-          candidates: list,
-          hasSelectCandidates,
-          config,
-          requests
-        };
-      })
-      .catch(err => {
-        console.error('[BG] candidates error:', err);
-        return { candidates: [], hasSelectCandidates: false, config: null, requests: [] };
-      });
-  };
-
-  const buildCandidatesUrl = (res, payloadVideoId) => {
-    const base = 'https://lrchub.coreone.work';
-    const raw = res.candidates_api_url || '';
-
-    try {
-      if (raw) {
-        const u = new URL(raw, base);
-        u.protocol = 'https:';
-        if (!u.searchParams.has('include_lyrics')) {
-          u.searchParams.set('include_lyrics', '1');
-        }
-        return u.toString();
-      }
-    } catch (e) {
-      console.warn('[BG] buildCandidatesUrl from api url failed:', e);
-    }
-
-    const vid = res.video_id || payloadVideoId;
-    if (!vid) return null;
-    const u = new URL('/api/lyrics_candidates', base);
-    u.searchParams.set('video_id', vid);
-    u.searchParams.set('include_lyrics', '1');
-    return u.toString();
-  };
-
-  // ★ 修正版 fetchFromLrchub
-  const fetchFromLrchub = (track, artist, youtube_url, video_id) => {
-    return fetch('https://lrchub.coreone.work/api/lyrics', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ track, artist, youtube_url, video_id })
-    })
-      .then(r => r.text())
-      .then(text => {
-        let lyrics = '';
-        let dynamicLines = null;
-        let hasSelectCandidates = false;
-        let candidates = [];
-        let config = null;
-        let requests = [];
-
-        try {
-          const json = JSON.parse(text);
-          console.log('[BG] Lyrics API JSON:', json);
-          const res = json.response || json;
-
-          hasSelectCandidates = !!res.has_select_candidates;
-          config = res.config || null;
-          requests = Array.isArray(res.requests) ? res.requests : [];
-
-          if (
-            res.dynamic_lyrics &&
-            Array.isArray(res.dynamic_lyrics.lines) &&
-            res.dynamic_lyrics.lines.length
-          ) {
-            dynamicLines = res.dynamic_lyrics.lines;
-
-            const lrcLines = dynamicLines
-              .map(line => {
-                let ms = null;
-                if (typeof line.startTimeMs === 'number') {
-                  ms = line.startTimeMs;
-                } else if (typeof line.startTimeMs === 'string') {
-                  const n = Number(line.startTimeMs);
-                  if (!Number.isNaN(n)) ms = n;
-                }
-                if (ms == null) return null;
-
-                let text = '';
-                if (typeof line.text === 'string' && line.text.length) {
-                  text = line.text;
-                } else if (Array.isArray(line.chars)) {
-                  text = line.chars
-                    .map(c => c.c || c.text || c.caption || '')
-                    .join('');
-                }
-
-                text = (text || '').trim();
-                const timeTag = `[${formatLrcTime(ms / 1000)}]`;
-                return text ? `${timeTag} ${text}` : timeTag;
-              })
-              .filter(Boolean);
-
-            lyrics = lrcLines.join('\n');
-          } else {
-            const synced =
-              typeof res.synced_lyrics === 'string'
-                ? res.synced_lyrics.trim()
-                : '';
-            const plain =
-              typeof res.plain_lyrics === 'string'
-                ? res.plain_lyrics.trim()
-                : '';
-            if (synced) lyrics = synced;
-            else if (plain) lyrics = plain;
-          }
-
-          const url = buildCandidatesUrl(res, video_id);
-          if (url) {
-            return fetchCandidatesFromUrl(url).then(cRes => {
-              // candidate 一覧
-              candidates = cRes.candidates;
-
-              // どちらかが true なら candidates UI を出す
-              hasSelectCandidates = !!(
-                hasSelectCandidates || cRes.hasSelectCandidates
-              );
-
-              // config は candidates API 側があれば優先
-              if (cRes.config) {
-                config = cRes.config;
-              }
-
-              // ★重要★ requests は candidates API から「非空で来たときだけ」上書き
-              // SELECT_NOT_FOUND などで [] のときは lyrics API 側の requests をそのまま使う
-              if (Array.isArray(cRes.requests) && cRes.requests.length) {
-                requests = cRes.requests;
-              }
-
-              return {
-                lyrics,
-                dynamicLines,
-                hasSelectCandidates,
-                candidates,
-                config,
-                requests
-              };
-            });
-          }
-        } catch (e) {
-          console.warn('[BG] Lyrics API response parse failed', e);
-        }
-
-        // candidates API を叩かなかった / 失敗した場合はこちら
-        return { lyrics, dynamicLines, hasSelectCandidates, candidates, config, requests };
-      });
-  };
-
-  const fetchFromGithub = (video_id) => {
-    if (!video_id) return Promise.resolve('');
-    const url = `https://raw.githubusercontent.com/LRCHub/${video_id}/main/README.md`;
-    console.log('[BG] GitHub fallback URL:', url);
-    return fetch(url)
-      .then(r => (r.ok ? r.text() : ''))
-      .then(text => (text || '').trim())
-      .catch(err => {
-        console.error('[BG] GitHub fallback error:', err);
-        return '';
-      });
-  };
-
-  const extractVideoIdFromUrl = (youtube_url) => {
-    if (!youtube_url) return null;
-    try {
-      const u = new URL(youtube_url);
-      if (u.hostname === 'youtu.be') {
-        const id = u.pathname.replace('/', '');
-        return id || null;
-      }
-      const v = u.searchParams.get('v');
-      return v || null;
-    } catch (e) {
-      return null;
-    }
-  };
-
-  const withTimeout = (promise, ms, label) => {
-    return Promise.race([
-      promise,
-      new Promise((_, reject) => {
-        setTimeout(() => reject(new Error(label || 'timeout')), ms);
-      })
-    ]);
-  };
-
+  // 歌詞取得
   if (req.type === 'GET_LYRICS') {
     const { track, artist, youtube_url, video_id } = req.payload || {};
 
     console.log('[BG] GET_LYRICS', { track, artist, youtube_url, video_id });
 
     (async () => {
-      const timeoutMs = 90000; //フォールバックに移動するタイムアウトのやつ
+      const timeoutMs = 90000;
       let githubFallback = false;
 
       try {
@@ -401,7 +554,7 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
             candidates: lrchubRes.candidates || [],
             config: lrchubRes.config || null,
             requests: lrchubRes.requests || [],
-            githubFallback: false
+            githubFallback: false,
           });
           return;
         }
@@ -427,7 +580,7 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
             candidates: [],
             config: null,
             requests: [],
-            githubFallback: false
+            githubFallback: false,
           });
           return;
         }
@@ -449,7 +602,7 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
             candidates: [],
             config: null,
             requests: [],
-            githubFallback
+            githubFallback,
           });
           return;
         }
@@ -463,7 +616,7 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
           candidates: [],
           config: null,
           requests: [],
-          githubFallback: false
+          githubFallback: false,
         });
       } catch (err) {
         console.error('Lyrics API Error:', err);
@@ -474,6 +627,7 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
     return true;
   }
 
+  // 歌詞候補の選択 / ロック
   if (req.type === 'SELECT_LYRICS_CANDIDATE') {
     const {
       youtube_url,
@@ -481,7 +635,7 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
       candidate_id,
       request,
       action,
-      lock
+      lock,
     } = req.payload || {};
 
     const body = {};
@@ -508,7 +662,7 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
     fetch('https://lrchub.coreone.work/api/lyrics_select', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
     })
       .then(r => r.text())
       .then(text => {
@@ -529,6 +683,7 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
     return true;
   }
 
+  // 翻訳取得
   if (req.type === 'GET_TRANSLATION') {
     const { youtube_url, video_id, lang, langs } = req.payload;
 
@@ -586,6 +741,7 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
     return true;
   }
 
+  // 翻訳登録
   if (req.type === 'REGISTER_TRANSLATION') {
     const { youtube_url, video_id, lang, lyrics } = req.payload;
 
@@ -598,7 +754,7 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
     fetch('https://lrchub.coreone.work/api/translation', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
     })
       .then(r => r.text())
       .then(text => {
@@ -619,6 +775,7 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
     return true;
   }
 
+  // 歌詞共有登録
   if (req.type === 'SHARE_REGISTER') {
     const { youtube_url, video_id, phrase, text, lang, time_ms, time_sec } = req.payload || {};
     console.log('[BG] SHARE_REGISTER', { youtube_url, video_id, lang, time_ms, time_sec });
@@ -644,7 +801,7 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
     fetch('https://lrchub.coreone.work/api/share/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
     })
       .then(r => r.text())
       .then(text => {

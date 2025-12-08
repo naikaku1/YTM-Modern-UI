@@ -1,4 +1,9 @@
 (function () {
+  const EXT =
+    typeof chrome !== 'undefined'
+      ? chrome
+      : (typeof browser !== 'undefined' ? browser : null);
+
   let config = {
     deepLKey: null,
     useTrans: true,
@@ -8,7 +13,8 @@
     uiLang: 'ja'
   };
 
-const TEXTS = {
+  // フォールバック言語
+  const LOCAL_FALLBACK_TEXTS = {
     ja: {
       unit_hour: "時間",
       unit_minute: "分",
@@ -25,10 +31,10 @@ const TEXTS = {
       replay_empty: "まだ再生データがありません...",
       replay_no_data_sub: "曲を聴くとここに表示されます",
       replay_reset_confirm: "本当に再生履歴を全て削除しますか？\nこの操作は取り消せません。",
-      
+
       replay_vibe: "あなたの雰囲気",
       replay_lyrics_heard: "累計行数",
-      
+
       settings_title: "設定",
       settings_ui_lang: "UI言語 / Language",
       settings_trans: "歌詞翻訳機能を使う",
@@ -37,44 +43,610 @@ const TEXTS = {
       settings_save: "保存",
       settings_reset: "リセット",
       settings_saved: "設定を保存しました"
-    },
-    en: {
-      unit_hour: "h",
-      unit_minute: "m",
-      unit_second: "s",
-      replay_playTime: "Play Time",
-      replay_plays: "plays",
-      replay_topSong: "Top Song",
-      replay_topArtist: "Top Artist",
-      replay_obsession: "Most obsession",
-      replay_ranking: "Top Songs",
-      replay_today: "Today",
-      replay_week: "This Week",
-      replay_all: "All Time",
-      replay_empty: "No music played yet...",
-      replay_no_data_sub: "Play some music to see stats",
-      replay_reset_confirm: "Are you sure you want to clear all history?\nThis cannot be undone.",
-
-      replay_vibe: "Your Vibe",
-      replay_lyrics_heard: "Lyrics Heard",
-      
-      settings_title: "Settings",
-      settings_ui_lang: "UI Language",
-      settings_trans: "Use Translation",
-      settings_main_lang: "Main language",
-      settings_sub_lang: "Sub language",
-      settings_save: "Save",
-      settings_reset: "Reset",
-      settings_saved: "Saved"
     }
   };
 
+
+  let UI_TEXTS = null;
+
+
   const t = (key) => {
     const lang = config.uiLang || 'ja';
-    return TEXTS[lang][key] || TEXTS['en'][key] || key;
+    const table =
+      (UI_TEXTS && UI_TEXTS[lang]) ||
+      (UI_TEXTS && UI_TEXTS['ja']) ||
+      LOCAL_FALLBACK_TEXTS[lang] ||
+      LOCAL_FALLBACK_TEXTS['ja'] ||
+      {};
+    return table[key] || key;
   };
 
+
+  // ===================== UI 言語: リポ から取得 =====================
+
+  const REMOTE_TEXTS_URL =
+    'https://raw.githubusercontent.com/naikaku1/YTM-Modern-UI/main/src/lang/ui.json';
+
+  let remoteTextsLoaded = false;
+
+  // 言語コード
+  function getLangDisplayName(code) {
+    if (UI_TEXTS && UI_TEXTS[code]) {
+      const metaName = UI_TEXTS[code].lang_name || UI_TEXTS[code].__name;
+      if (metaName) return metaName;
+    }
+    if (code === 'ja') return '日本語';
+    if (code === 'en') return 'English';
+    if (code === 'ko') return '한국어';
+    return code;
+  }
+
+  function mergeRemoteTexts(remote) {
+    if (!remote || typeof remote !== 'object') return;
+    UI_TEXTS = remote;
+    remoteTextsLoaded = true;
+    refreshUiLangGroup();
+  }
+
+  // UI 言語ピルを TEXTS の中身から自動生成
+
+  let uiLangEtcClickSetup = false;
+  
+  function refreshUiLangGroup() {
+    const group = document.getElementById('ui-lang-group');
+    if (!group) return;
+  
+    const current = config.uiLang || 'ja';
+    group.innerHTML = '';
+  
+    // 利用可能な言語一覧
+    const langs = UI_TEXTS
+      ? Object.keys(UI_TEXTS)
+      : Object.keys(LOCAL_FALLBACK_TEXTS);
+  
+    if (!langs.length) return;
+  
+    const MAX_DIRECT = 3; // ここまでが普通のボタン
+    const directLangs = langs.slice(0, MAX_DIRECT);
+    const hasMore = langs.length > MAX_DIRECT;
+  
+    // ---- 直接ボタン（最大3つ） ----
+    directLangs.forEach((code) => {
+      const btn = document.createElement('button');
+      btn.className = 'ytm-lang-pill';
+      btn.dataset.value = code;
+      btn.textContent = getLangDisplayName(code);
+      group.appendChild(btn);
+    });
+  
+    // ---- etc... ボタン ＋ スクロールメニュー ----
+    if (hasMore) {
+      const etcBtn = document.createElement('button');
+      etcBtn.className = 'ytm-lang-pill ytm-lang-pill-etc';
+      etcBtn.dataset.value = '__etc__';
+      etcBtn.textContent = 'etc...';
+      group.appendChild(etcBtn);
+  
+      // メニュー本体（スクロール可能）
+      let menu = document.getElementById('ui-lang-etc-menu');
+      if (!menu) {
+        menu = document.createElement('div');
+        menu.id = 'ui-lang-etc-menu';
+        menu.className = 'ytm-lang-etc-menu';
+        menu.style.position = 'fixed';
+        menu.style.zIndex = '2147483647';
+        menu.style.maxHeight = '260px';
+        menu.style.overflowY = 'auto';
+        menu.style.borderRadius = '8px';
+        menu.style.padding = '6px';
+        menu.style.background = 'rgba(0,0,0,0.9)';
+        menu.style.border = '1px solid rgba(255,255,255,0.2)';
+        menu.style.minWidth = '160px';
+        menu.style.display = 'none';
+        document.body.appendChild(menu);
+      }
+  
+      // メニュー中身を作り直す（無制限）
+      menu.innerHTML = '';
+      langs.forEach((code) => {
+        const item = document.createElement('button');
+        item.className = 'ytm-lang-etc-item';
+        item.textContent = getLangDisplayName(code);
+        item.dataset.code = code;
+        item.style.display = 'block';
+        item.style.width = '100%';
+        item.style.textAlign = 'left';
+        item.style.border = 'none';
+        item.style.background = 'transparent';
+        item.style.padding = '4px 6px';
+        item.style.cursor = 'pointer';
+        item.style.color = '#fff';
+        item.style.fontSize = '12px';
+  
+        if (code === current) {
+          item.style.fontWeight = '600';
+          item.style.background = 'rgba(255,255,255,0.08)';
+        }
+  
+        item.addEventListener('click', () => {
+          config.uiLang = code;
+          if (storage && storage.set) {
+            storage.set('ytm_ui_lang', code);
+          }
+          menu.style.display = 'none';
+          refreshUiLangGroup(); // 選択後にラベルやアクティブ状態を更新
+        });
+  
+        menu.appendChild(item);
+      });
+  
+      // etc ボタンでメニュー開閉
+      etcBtn.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        const rect = etcBtn.getBoundingClientRect();
+        menu.style.left = `${rect.left}px`;
+        menu.style.top = `${rect.bottom + 4}px`;
+        menu.style.display = (menu.style.display === 'block') ? 'none' : 'block';
+      });
+  
+      // 現在の言語が directLangs にない場合は etc ボタンをハイライト
+      if (!directLangs.includes(current)) {
+        etcBtn.classList.add('active');
+        etcBtn.textContent = getLangDisplayName(current);
+      }
+  
+      // 外側クリックでメニューを閉じる（1回だけ設定）
+      if (!uiLangEtcClickSetup) {
+        uiLangEtcClickSetup = true;
+        document.addEventListener('click', (ev) => {
+          if (!menu) return;
+          if (ev.target === menu || menu.contains(ev.target)) return;
+          const btn = document.querySelector('.ytm-lang-pill-etc');
+          if (btn && (ev.target === btn || btn.contains(ev.target))) return;
+          menu.style.display = 'none';
+        }, true);
+      }
+    }
+  
+    // ---- 直接ボタンの active 切り替え＆クリック処理 ----
+    const activeForDirect = directLangs.includes(current) ? current : '';
+    setupLangPills('ui-lang-group', activeForDirect, (v) => {
+      if (!v || v === '__etc__') return; // etc はここでは何もしない
+      config.uiLang = v;
+      if (storage && storage.set) {
+        storage.set('ytm_ui_lang', v);
+      }
+    });
+  }
+
+
+  // GitHub から TEXTS を読む
+  async function loadRemoteTextsFromGithub() {
+    try {
+      const res = await fetch(REMOTE_TEXTS_URL, { cache: 'no-store' });
+      if (!res.ok) {
+        console.warn('[UI TEXTS] HTTP error:', res.status);
+        return;
+      }
+      const raw = await res.text();
+
+      let obj = null;
+      try {
+        // ui.json は純粋な JSON
+        obj = JSON.parse(raw);
+      } catch (e) {
+        console.warn('[UI TEXTS] JSON.parse failed for ui.json', e);
+        return;
+      }
+
+      mergeRemoteTexts(obj);
+      console.log('[UI TEXTS] remote languages loaded:', Object.keys(obj));
+    } catch (e) {
+      console.warn('[UI TEXTS] failed to load remote texts:', e);
+    }
+  }
+
+
   const NO_LYRICS_SENTINEL = '__NO_LYRICS__';
+
+  // ===================== CloudSync: Daily Replay クラウド同期 =====================
+  const CloudSync = (() => {
+    if (!EXT || !EXT.runtime) {
+      return {
+        init() {},
+      };
+    }
+
+    let statusEl = null;
+    let tokenInputEl = null;
+    let syncButtonEl = null;
+    let panelRoot = null;
+
+    function setStatus(text) {
+      if (statusEl) {
+        statusEl.textContent = text;
+        statusEl.title = text;
+      }
+    }
+
+    function createPanel() {
+      const existing = document.getElementById('dr-cloud-sync-panel');
+      if (existing) {
+        panelRoot = existing;
+        statusEl = document.querySelector('#dr-cloud-sync-panel-status');
+        tokenInputEl = document.querySelector('#dr-cloud-sync-token-input');
+        syncButtonEl = document.querySelector('#dr-cloud-sync-sync-btn');
+        return;
+      }
+
+      const root = document.createElement('div');
+      root.id = 'dr-cloud-sync-panel';
+      panelRoot = root;
+      root.style.position = 'fixed';
+      root.style.zIndex = '2147483647';
+      root.style.right = '16px';
+      root.style.bottom = '16px';
+      root.style.width = '280px';
+      root.style.maxWidth = '90vw';
+      root.style.borderRadius = '12px';
+      root.style.background = 'rgba(10, 10, 15, 0.96)';
+      root.style.border = '1px solid rgba(255, 255, 255, 0.12)';
+      root.style.boxShadow = '0 12px 30px rgba(0, 0, 0, 0.6)';
+      root.style.color = '#f5f5ff';
+      root.style.fontFamily =
+        'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+      root.style.fontSize = '12px';
+      root.style.padding = '10px 12px';
+
+      const titleRow = document.createElement('div');
+      titleRow.style.display = 'flex';
+      titleRow.style.alignItems = 'center';
+      titleRow.style.justifyContent = 'space-between';
+      titleRow.style.marginBottom = '6px';
+
+      const title = document.createElement('div');
+      title.textContent = 'Daily Replay クラウド同期';
+      title.style.fontSize = '13px';
+      title.style.fontWeight = '600';
+
+      const closeBtn = document.createElement('button');
+      closeBtn.textContent = '×';
+      closeBtn.style.border = 'none';
+      closeBtn.style.background = 'transparent';
+      closeBtn.style.color = '#aaa';
+      closeBtn.style.cursor = 'pointer';
+      closeBtn.style.fontSize = '14px';
+      closeBtn.style.lineHeight = '1';
+      closeBtn.style.Padding = '0 4px';
+      closeBtn.addEventListener('click', () => {
+        root.style.display = 'none';
+      });
+
+      titleRow.appendChild(title);
+      titleRow.appendChild(closeBtn);
+
+      const desc = document.createElement('div');
+      desc.textContent =
+        '「復活の呪文」を使って履歴をサーバーと同期します。';
+      desc.style.marginBottom = '6px';
+      desc.style.color = '#b0b4d0';
+      desc.style.lineHeight = '1.4';
+
+      const tokenLabel = document.createElement('div');
+      tokenLabel.textContent = '復活の呪文（ID）';
+      tokenLabel.style.fontSize = '11px';
+      tokenLabel.style.marginBottom = '2px';
+      tokenLabel.style.color = '#d0d4ff';
+
+      const tokenInput = document.createElement('input');
+      tokenInput.id = 'dr-cloud-sync-token-input';
+      tokenInput.type = 'text';
+      tokenInput.placeholder = '例: dr_XXXXXXXXXXXXXXXX';
+      tokenInput.style.width = '100%';
+      tokenInput.style.boxSizing = 'border-box';
+      tokenInput.style.borderRadius = '6px';
+      tokenInput.style.border = '1px solid rgba(255,255,255,0.2)';
+      tokenInput.style.background = 'rgba(5,5,10,0.9)';
+      tokenInput.style.color = '#f5f5ff';
+      tokenInput.style.padding = '4px 6px';
+      tokenInput.style.fontSize = '12px';
+      tokenInput.style.marginBottom = '4px';
+
+      const tokenHelpRow = document.createElement('div');
+      tokenHelpRow.style.display = 'flex';
+      tokenHelpRow.style.justifyContent = 'space-between';
+      tokenHelpRow.style.alignItems = 'center';
+      tokenHelpRow.style.marginBottom = '6px';
+
+      const tokenHelp = document.createElement('div');
+      tokenHelp.textContent =
+        '※ Discord ログイン後に表示される復活の呪文を入力。';
+      tokenHelp.style.fontSize = '10px';
+      tokenHelp.style.color = '#8f93b8';
+      tokenHelp.style.marginRight = '4px';
+
+      const loginLinkBtn = document.createElement('button');
+      loginLinkBtn.textContent = 'ログインページ';
+      loginLinkBtn.style.fontSize = '10px';
+      loginLinkBtn.style.borderRadius = '999px';
+      loginLinkBtn.style.border = 'none';
+      loginLinkBtn.style.padding = '4px 8px';
+      loginLinkBtn.style.cursor = 'pointer';
+      loginLinkBtn.style.background = '#5865F2';
+      loginLinkBtn.style.color = '#fff';
+      loginLinkBtn.addEventListener('click', () => {
+        openLoginPage();
+      });
+
+      tokenHelpRow.appendChild(tokenHelp);
+      tokenHelpRow.appendChild(loginLinkBtn);
+
+      const buttonRow = document.createElement('div');
+      buttonRow.style.display = 'flex';
+      buttonRow.style.gap = '6px';
+      buttonRow.style.marginBottom = '4px';
+
+      const saveBtn = document.createElement('button');
+      saveBtn.textContent = '復活の呪文を保存';
+      saveBtn.style.flex = '1';
+      saveBtn.style.borderRadius = '999px';
+      saveBtn.style.border = 'none';
+      saveBtn.style.padding = '5px 8px';
+      saveBtn.style.cursor = 'pointer';
+      saveBtn.style.background = '#4f8bff';
+      saveBtn.style.color = '#fff';
+      saveBtn.style.fontSize = '11px';
+      saveBtn.style.fontWeight = '600';
+
+      const syncBtn = document.createElement('button');
+      syncBtn.id = 'dr-cloud-sync-sync-btn';
+      syncBtn.textContent = '今すぐ同期';
+      syncBtn.style.flex = '0 0 auto';
+      syncBtn.style.borderRadius = '999px';
+      syncBtn.style.border = 'none';
+      syncBtn.style.padding = '5px 10px';
+      syncBtn.style.cursor = 'pointer';
+      syncBtn.style.background = '#1db954';
+      syncBtn.style.color = '#fff';
+      syncBtn.style.fontSize = '11px';
+      syncBtn.style.fontWeight = '600';
+      syncBtn.disabled = true;
+      syncBtn.style.opacity = '0.5';
+
+      saveBtn.addEventListener('click', () => {
+        const token = tokenInput.value.trim();
+        if (!token) {
+          setStatus('復活の呪文を入力してください。');
+          return;
+        }
+        saveRecoveryToken(token);
+      });
+
+      syncBtn.addEventListener('click', () => {
+        syncBtn.disabled = true;
+        syncBtn.style.opacity = '0.5';
+        setStatus('同期中...');
+        syncNow().finally(() => {
+          syncBtn.disabled = false;
+          syncBtn.style.opacity = '1';
+        });
+      });
+
+      const status = document.createElement('div');
+      status.id = 'dr-cloud-sync-panel-status';
+      status.textContent = '状態: 復活の呪文が未設定です。';
+      status.style.fontSize = '10px';
+      status.style.color = '#b0b4d0';
+      status.style.marginTop = '2px';
+      status.style.whiteSpace = 'pre-wrap';
+
+      root.appendChild(titleRow);
+      root.appendChild(desc);
+      root.appendChild(tokenLabel);
+      root.appendChild(tokenInput);
+      root.appendChild(tokenHelpRow);
+      buttonRow.appendChild(saveBtn);
+      buttonRow.appendChild(syncBtn);
+      root.appendChild(buttonRow);
+      root.appendChild(status);
+
+      document.body.appendChild(root);
+
+      statusEl = status;
+      tokenInputEl = tokenInput;
+      syncButtonEl = syncBtn;
+
+      // ★ パネルを初めて出したときに状態を読み込む
+      loadInitialState();
+    }
+
+    function saveRecoveryToken(token) {
+      EXT.runtime.sendMessage(
+        {
+          type: 'SAVE_RECOVERY_TOKEN',
+          token,
+        },
+        (resp) => {
+          if (!resp || !resp.ok) {
+            const errMsg = resp && resp.error ? resp.error : '保存に失敗しました。';
+            setStatus('復活の呪文の保存に失敗: ' + errMsg);
+            return;
+          }
+          setStatus('復活の呪文を保存しました。このIDに紐づいてクラウド同期されます。');
+          if (syncButtonEl) {
+            syncButtonEl.disabled = false;
+            syncButtonEl.style.opacity = '1';
+          }
+        }
+      );
+    }
+
+    function openLoginPage() {
+      EXT.runtime.sendMessage({ type: 'OPEN_LOGIN_PAGE' }, (resp) => {
+        if (!resp || !resp.ok) {
+          const errMsg = resp && resp.error ? resp.error : 'ログインページを開けませんでした。';
+          setStatus('ログインページの起動エラー: ' + errMsg);
+          return;
+        }
+        setStatus(
+          'ブラウザでログインページを開きました。ログイン後に復活の呪文をここに貼り付けてください。'
+        );
+      });
+    }
+
+    function getLocalHistory() {
+      return new Promise((resolve) => {
+        if (!EXT.storage || !EXT.storage.local) {
+          resolve([]);
+          return;
+        }
+        EXT.storage.local.get(ReplayManager.HISTORY_KEY, (items) => {
+          const value = items && items[ReplayManager.HISTORY_KEY];
+          if (Array.isArray(value)) {
+            resolve(value);
+          } else {
+            resolve([]);
+          }
+        });
+      });
+    }
+
+    function setLocalHistory(history) {
+      return new Promise((resolve) => {
+        if (!EXT.storage || !EXT.storage.local) {
+          resolve();
+          return;
+        }
+        EXT.storage.local.set({ [ReplayManager.HISTORY_KEY]: history }, () => resolve());
+      });
+    }
+
+    // ★ 戻り値を { ok, ... } にして結果が分かるようにする
+    async function syncNow() {
+      try {
+        const history = await getLocalHistory();
+        const resp = await new Promise((resolve) => {
+          EXT.runtime.sendMessage(
+            {
+              type: 'SYNC_HISTORY',
+              history,
+            },
+            (response) => resolve(response)
+          );
+        });
+
+        if (!resp || !resp.ok) {
+          const errMsg = resp && resp.error ? resp.error : '同期エラー';
+          setStatus('同期に失敗しました: ' + errMsg);
+          return { ok: false, error: errMsg, raw: resp || null };
+        }
+
+        const mergedHistory = Array.isArray(resp.mergedHistory)
+          ? resp.mergedHistory
+          : Array.isArray(resp.history)
+          ? resp.history
+          : null;
+
+        if (mergedHistory) {
+          await setLocalHistory(mergedHistory);
+        }
+
+        const lastSyncAtMs = resp.lastSyncAt || Date.now();
+        const lastSyncDate = new Date(lastSyncAtMs);
+        const serverCount =
+          mergedHistory && Array.isArray(mergedHistory)
+            ? mergedHistory.length
+            : resp.serverCount || '?';
+
+        setStatus(
+          `同期完了: ローカル ${history.length} 件 → サーバー ${serverCount} 件\n最終同期: ${lastSyncDate.toLocaleString()}`
+        );
+
+        return {
+          ok: true,
+          mergedHistory: mergedHistory || null,
+          lastSyncAt: lastSyncAtMs,
+          serverCount,
+        };
+      } catch (e) {
+        console.error('[DailyReplay Cloud] sync error', e);
+        const msg = e && e.message ? e.message : String(e);
+        setStatus(
+          '同期中にエラーが発生しました: ' + msg
+        );
+        return { ok: false, error: msg, raw: null };
+      }
+    }
+
+    function loadInitialState() {
+      EXT.runtime.sendMessage({ type: 'GET_CLOUD_STATE' }, (resp) => {
+        if (!resp || !resp.ok || !resp.state) {
+          setStatus(
+            '状態の取得に失敗しました。復活の呪文を設定すると同期できます。'
+          );
+          return;
+        }
+        const state = resp.state;
+        if (tokenInputEl && state.recoveryToken) {
+          tokenInputEl.value = state.recoveryToken;
+        }
+
+        if (syncButtonEl) {
+          const hasToken = !!state.recoveryToken;
+          syncButtonEl.disabled = !hasToken;
+          syncButtonEl.style.opacity = hasToken ? '1' : '0.5';
+        }
+
+        const lastSyncAt = state.lastSyncAt ? new Date(state.lastSyncAt) : null;
+        const lastSyncText = lastSyncAt ? lastSyncAt.toLocaleString() : '未同期';
+
+        setStatus(
+          state.recoveryToken
+            ? `状態: 復活の呪文が設定されています。\n最終同期: ${lastSyncText}`
+            : '状態: 復活の呪文が未設定です。ログインして発行されたIDを入力してください。'
+        );
+      });
+    }
+
+    // ★ 起動時にパネルを出さず、バックグラウンドで静かに同期だけ行う
+    function init() {
+      if (window.__drCloudSyncInitialized) return;
+      window.__drCloudSyncInitialized = true;
+
+      const startAutoSync = () => {
+        // 起動時自動同期（トークンが無いときはサーバー側で NO_TOKEN になり、トーストも出さない）
+        syncNow()
+          .then((result) => {
+            if (!result || !result.ok) return;
+            // 同期に成功したときだけ右上トースト
+            if (typeof showToast === 'function') {
+              showToast('Daily Replay のクラウド同期が完了しました');
+            }
+          })
+          .catch((e) => {
+            console.warn('[DailyReplay Cloud] auto sync failed', e);
+          });
+      };
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', startAutoSync);
+      } else {
+        startAutoSync();
+      }
+    }
+
+    // Cloud ボタンから開くときだけパネルを生成・表示
+    function openPanel() {
+      createPanel();
+      if (panelRoot) {
+        panelRoot.style.display = 'block';
+      }
+    }
+
+    return { init, openPanel, syncNow };
+  })();
+
+  // ===================== ここから既存 Immersion ロジック =====================
 
   let currentKey = null;
   let lyricsData = [];
@@ -165,58 +737,58 @@ const TEXTS = {
     },
 
     incrementLyricCount: function() {
-        this.currentLyricLines++;
+      this.currentLyricLines++;
     },
 
     exportHistory: async function() {
-        const history = await storage.get(this.HISTORY_KEY) || [];
-        if (history.length === 0) {
-            alert('保存する履歴データがありません。');
-            return;
-        }
-        const blob = new Blob([JSON.stringify(history, null, 2)], {type : 'application/json'});
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-        a.download = `ytm_history_${date}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
+      const history = await storage.get(this.HISTORY_KEY) || [];
+      if (history.length === 0) {
+        alert('保存する履歴データがありません。');
+        return;
+      }
+      const blob = new Blob([JSON.stringify(history, null, 2)], {type : 'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      a.download = `ytm_history_${date}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
     },
 
     importHistory: function() {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.json';
-        input.onchange = (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = async (ev) => {
-                try {
-                    const data = JSON.parse(ev.target.result);
-                    if (Array.isArray(data)) {
-                        if(confirm('履歴を復元しますか？\n[OK] 現在の履歴に結合 (マージ)\n[キャンセル] キャンセル')) {
-                             const current = await storage.get(this.HISTORY_KEY) || [];
-                             const existingIds = new Set(current.map(i => i.id + '_' + i.timestamp));
-                             const newData = data.filter(i => !existingIds.has(i.id + '_' + i.timestamp));
-                             const merged = current.concat(newData);
-                             merged.sort((a,b) => a.timestamp - b.timestamp);
-                             await storage.set(this.HISTORY_KEY, merged);
-                             alert('履歴を復元しました！');
-                             this.renderUI();
-                        }
-                    } else {
-                        alert('無効なファイル形式です。');
-                    }
-                } catch(err) {
-                    console.error(err);
-                    alert('ファイルの読み込みに失敗しました。');
-                }
-            };
-            reader.readAsText(file);
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json';
+      input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async (ev) => {
+          try {
+            const data = JSON.parse(ev.target.result);
+            if (Array.isArray(data)) {
+              if (confirm('履歴を復元しますか？\n[OK] 現在の履歴に結合 (マージ)\n[キャンセル] キャンセル')) {
+                const current = await storage.get(this.HISTORY_KEY) || [];
+                const existingIds = new Set(current.map(i => i.id + '_' + i.timestamp));
+                const newData = data.filter(i => !existingIds.has(i.id + '_' + i.timestamp));
+                const merged = current.concat(newData);
+                merged.sort((a,b) => a.timestamp - b.timestamp);
+                await storage.set(this.HISTORY_KEY, merged);
+                alert('履歴を復元しました！');
+                this.renderUI();
+              }
+            } else {
+              alert('無効なファイル形式です。');
+            }
+          } catch(err) {
+            console.error(err);
+            alert('ファイルの読み込みに失敗しました。');
+          }
         };
-        input.click();
+        reader.readAsText(file);
+      };
+      input.click();
     },
 
     check: async function () {
@@ -323,17 +895,17 @@ const TEXTS = {
         countMap[key].totalDuration += duration;
         
         if (!artistMap[h.artist]) {
-            artistMap[h.artist] = { count: 0, src: h.src }; 
+          artistMap[h.artist] = { count: 0, src: h.src }; 
         } else {
-            artistMap[h.artist].count++;
-            if (h.src) artistMap[h.artist].src = h.src;
+          artistMap[h.artist].count++;
+          if (h.src) artistMap[h.artist].src = h.src;
         }
         
         uniqueArtists.add(h.artist);
         totalSeconds += duration;
         
         if (h.lyricLines && typeof h.lyricLines === 'number') {
-            totalLyrics += h.lyricLines;
+          totalLyrics += h.lyricLines;
         }
 
         const hour = new Date(h.timestamp).getHours();
@@ -347,9 +919,9 @@ const TEXTS = {
       
       const topArtists = Object.keys(artistMap)
         .map(name => ({ 
-            name, 
-            count: artistMap[name].count,
-            src: artistMap[name].src
+          name, 
+          count: artistMap[name].count,
+          src: artistMap[name].src
         }))
         .sort((a, b) => b.count - a.count);
       
@@ -374,39 +946,35 @@ const TEXTS = {
         topArtistShare = Math.round(topArtistRatio * 100) + "%";
 
         if (totalPlays < 5) {
-            vibeLabel = "音楽探しの途中";
+          vibeLabel = "音楽探しの途中";
         }
-        // 優先度 1: 集中度
         else if (topArtistRatio >= 0.6) {
-            vibeLabel = `${mostPlayedArtist.name} 一筋`;
+          vibeLabel = `${mostPlayedArtist.name} 一筋`;
         }
         else if (topSongRatio >= 0.5) {
-            vibeLabel = "一点集中リピート";
+          vibeLabel = "一点集中リピート";
         }
         else if (diversityRatio >= 0.8) {
-            vibeLabel = "幅広く開拓中";
+          vibeLabel = "幅広く開拓中";
         }
-        // 優先度 2: 連続性・長時間再生
         else if (totalHours >= 4) {
-            vibeLabel = "耐久リスニングマスター";
+          vibeLabel = "耐久リスニングマスター";
         }
-        // 優先度 3: 曜日別スタイル
-        else if (dayOfWeek === 5) { // 金曜日
-            vibeLabel = "💃 解放のフライデー";
+        else if (dayOfWeek === 5) {
+          vibeLabel = "💃 解放のフライデー";
         } 
-        else if (dayOfWeek === 6) { // 土曜日
-            vibeLabel = "🥳 週末お祭りモード";
+        else if (dayOfWeek === 6) {
+          vibeLabel = "🥳 週末お祭りモード";
         } 
-        else if (dayOfWeek === 0) { // 日曜日
-            vibeLabel = "🧘‍♂️ 明日への充電";
+        else if (dayOfWeek === 0) {
+          vibeLabel = "🧘‍♂️ 明日への充電";
         }
-        // 最終フォールバック: 時間帯判定
         else {
-            if (peakHour >= 4 && peakHour < 9) { vibeLabel = "早起きスタイル"; }
-            else if (peakHour >= 9 && peakHour < 12) { vibeLabel = "午前中の集中"; }
-            else if (peakHour >= 12 && peakHour < 17) { vibeLabel = "午後ワーク"; }
-            else if (peakHour >= 17 && peakHour < 23) { vibeLabel = "夜型リスナー"; }
-            else { vibeLabel = "深夜の没頭"; }
+          if (peakHour >= 4 && peakHour < 9) { vibeLabel = "早起きスタイル"; }
+          else if (peakHour >= 9 && peakHour < 12) { vibeLabel = "午前中の集中"; }
+          else if (peakHour >= 12 && peakHour < 17) { vibeLabel = "午後ワーク"; }
+          else if (peakHour >= 17 && peakHour < 23) { vibeLabel = "夜型リスナー"; }
+          else { vibeLabel = "深夜の没頭"; }
         }
       } else {
         vibeLabel = "No Data";
@@ -438,7 +1006,6 @@ const TEXTS = {
       if (pills[1]) pills[1].textContent = t('replay_week');
       if (pills[2]) pills[2].textContent = t('replay_all');
 
-
       let footerArea = document.getElementById('replay-footer-area');
       
       const oldBtn1 = document.getElementById('replay-reset-action');
@@ -449,27 +1016,48 @@ const TEXTS = {
       if (oldBtn3) oldBtn3.remove();
 
       if (!footerArea) {
-          footerArea = createEl('div', 'replay-footer-area', 'replay-footer-area');
-          ui.replayPanel.appendChild(footerArea);
+        footerArea = createEl('div', 'replay-footer-area', 'replay-footer-area');
+        ui.replayPanel.appendChild(footerArea);
       }
 
       footerArea.innerHTML = `
         <button id="replay-import-btn" class="replay-footer-btn">📂 Restore</button>
         <button id="replay-export-btn" class="replay-footer-btn">💾 Backup</button>
+        <button id="replay-cloudsync-btn" class="replay-footer-btn">☁ Cloud</button>
         <button id="replay-reset-action" class="replay-footer-btn" style="color:#ff6b6b; border-color:rgba(255,107,107,0.3);">🗑️ Reset</button>
       `;
 
       document.getElementById('replay-reset-action').onclick = async () => {
         if (confirm(t('replay_reset_confirm'))) {
-            await storage.remove(ReplayManager.HISTORY_KEY);
-            ReplayManager.renderUI();
+          await storage.remove(ReplayManager.HISTORY_KEY);
+          ReplayManager.renderUI();
+        }
+      };
+      document.getElementById('replay-export-btn').onclick = () => this.exportHistory();
+      document.getElementById('replay-import-btn').onclick = () => this.importHistory();
+
+      const cloudBtn = document.getElementById('replay-cloudsync-btn');
+      if (cloudBtn) {
+        cloudBtn.onclick = () => {
+          CloudSync.init();
+          if (CloudSync.openPanel) {
+            CloudSync.openPanel();
+          }
+        };
+      }
+
+
+      document.getElementById('replay-reset-action').onclick = async () => {
+        if (confirm(t('replay_reset_confirm'))) {
+          await storage.remove(ReplayManager.HISTORY_KEY);
+          ReplayManager.renderUI();
         }
       };
       document.getElementById('replay-export-btn').onclick = () => this.exportHistory();
       document.getElementById('replay-import-btn').onclick = () => this.importHistory();
 
       if (stats.totalPlays === 0) {
-         container.innerHTML = `<div class="replay-empty"><div style="font-size:40px; margin-bottom:10px;">🎧</div><div>${t('replay_empty')}</div><div style="font-size:12px; opacity:0.6; margin-top:5px;">${t('replay_no_data_sub')}</div></div>`;
+        container.innerHTML = `<div class="replay-empty"><div style="font-size:40px; margin-bottom:10px;">🎧</div><div>${t('replay_empty')}</div><div style="font-size:12px; opacity:0.6; margin-top:5px;">${t('replay_no_data_sub')}</div></div>`;
         return;
       }
 
@@ -479,10 +1067,10 @@ const TEXTS = {
 
       let topArtistsSubHtml = '';
       if (stats.topArtists.length > 1) {
-          topArtistsSubHtml = `<div style="margin-top:auto; padding-top:10px; border-top:1px solid rgba(255,255,255,0.1); font-size:12px; font-weight:600; color:rgba(255,255,255,0.9);">`;
-          if (stats.topArtists[1]) topArtistsSubHtml += `<div style="display:flex; justify-content:space-between; margin-bottom:4px; align-items:center;"><span style="opacity:0.9;">#2 ${stats.topArtists[1].name}</span><span style="opacity:0.7;">${stats.topArtists[1].count}回</span></div>`;
-          if (stats.topArtists[2]) topArtistsSubHtml += `<div style="display:flex; justify-content:space-between; align-items:center;"><span style="opacity:0.9;">#3 ${stats.topArtists[2].name}</span><span style="opacity:0.7;">${stats.topArtists[2].count}回</span></div>`;
-          topArtistsSubHtml += `</div>`;
+        topArtistsSubHtml = `<div style="margin-top:auto; padding-top:10px; border-top:1px solid rgba(255,255,255,0.1); font-size:12px; font-weight:600; color:rgba(255,255,255,0.9);">`;
+        if (stats.topArtists[1]) topArtistsSubHtml += `<div style="display:flex; justify-content:space-between; margin-bottom:4px; align-items:center;"><span style="opacity:0.9;">#2 ${stats.topArtists[1].name}</span><span style="opacity:0.7;">${stats.topArtists[1].count}回</span></div>`;
+        if (stats.topArtists[2]) topArtistsSubHtml += `<div style="display:flex; justify-content:space-between; align-items:center;"><span style="opacity:0.9;">#3 ${stats.topArtists[2].name}</span><span style="opacity:0.7;">${stats.topArtists[2].count}回</span></div>`;
+        topArtistsSubHtml += `</div>`;
       }
 
       let html = `
@@ -516,17 +1104,17 @@ const TEXTS = {
 
           <div class="bento-item hero-artist" style="${artistBgStyle} position:relative; overflow:hidden;">
             <div style="position:relative; z-index:2; height:100%; display:flex; flex-direction:column; color:#fff; padding-bottom:5px;">
-                <div class="bento-label" style="color:rgba(255,255,255,0.7);">${t('replay_topArtist')}</div>
-                
-                <div class="bento-artist-name" style="font-size:28px; font-weight:900; margin: 5px 0 10px 0; color:#fff; line-height:1.1; flex-shrink: 0; min-height: 30px;">
-                    ${stats.mostPlayedArtist?.name || 'N/A'}
-                </div>
-                
-                <div class="bento-badge" style="font-size:11px; padding:4px 10px; margin-bottom:10px; align-self:flex-start; background:rgba(255,255,255,0.25); border:1px solid rgba(255,255,255,0.1);">
-                    総再生の ${stats.topArtistShare}
-                </div>
+              <div class="bento-label" style="color:rgba(255,255,255,0.7);">${t('replay_topArtist')}</div>
+              
+              <div class="bento-artist-name" style="font-size:28px; font-weight:900; margin: 5px 0 10px 0; color:#fff; line-height:1.1; flex-shrink: 0; min-height: 30px;">
+                ${stats.mostPlayedArtist?.name || 'N/A'}
+              </div>
+              
+              <div class="bento-badge" style="font-size:11px; padding:4px 10px; margin-bottom:10px; align-self:flex-start; background:rgba(255,255,255,0.25); border:1px solid rgba(255,255,255,0.1);">
+                総再生の ${stats.topArtistShare}
+              </div>
 
-                ${topArtistsSubHtml}
+              ${topArtistsSubHtml}
             </div>
           </div>
 
@@ -559,6 +1147,7 @@ const TEXTS = {
     }
   };
 
+  // ===================== QueueManager =====================
   const QueueManager = {
     observer: null,
 
@@ -600,30 +1189,30 @@ const TEXTS = {
     },
 
     onSongChanged: function() {
-        this.syncQueue();
-        [500, 1000, 2000, 3000].forEach(ms => {
-            setTimeout(() => {
-                if (ui.queuePanel && ui.queuePanel.classList.contains('visible')) {
-                    this.syncQueue();
-                }
-            }, ms);
-        });
+      this.syncQueue();
+      [500, 1000, 2000, 3000].forEach(ms => {
+        setTimeout(() => {
+          if (ui.queuePanel && ui.queuePanel.classList.contains('visible')) {
+            this.syncQueue();
+          }
+        }, ms);
+      });
     },
 
     startObserver: function() {
-        const originalQueue = document.querySelector('ytmusic-player-queue');
-        if (originalQueue && !this.observer) {
-            this.observer = new MutationObserver(() => {
-                if (ui.queuePanel && ui.queuePanel.classList.contains('visible')) {
-                    this.syncQueue();
-                }
-            });
-            this.observer.observe(originalQueue, { 
-                childList: true, 
-                subtree: true, 
-                attributes: true 
-            });
-        }
+      const originalQueue = document.querySelector('ytmusic-player-queue');
+      if (originalQueue && !this.observer) {
+        this.observer = new MutationObserver(() => {
+          if (ui.queuePanel && ui.queuePanel.classList.contains('visible')) {
+            this.syncQueue();
+          }
+        });
+        this.observer.observe(originalQueue, { 
+          childList: true, 
+          subtree: true, 
+          attributes: true 
+        });
+      }
     },
 
     syncQueue: function () {
@@ -663,37 +1252,37 @@ const TEXTS = {
 
         let src = '';
         if (imgEl && imgEl.src && !imgEl.src.startsWith('data:')) {
-            src = imgEl.src;
+          src = imgEl.src;
         }
 
         const row = createEl('div', '', `queue-item ${isPlaying ? 'current' : ''}`);
         
         const imgHtml = src 
-            ? `<img src="${src}" loading="lazy">` 
-            : `<div style="display:flex;justify-content:center;align-items:center;width:100%;height:100%;background:#333;font-size:18px;">🎵</div>`;
+          ? `<img src="${src}" loading="lazy">` 
+          : `<div style="display:flex;justify-content:center;align-items:center;width:100%;height:100%;background:#333;font-size:18px;">🎵</div>`;
 
         const indicatorHtml = isPlaying 
-            ? `<div class="queue-playing-indicator"><i></i><i></i><i></i></div>` 
-            : '';
+          ? `<div class="queue-playing-indicator"><i></i><i></i><i></i></div>` 
+          : '';
 
         row.innerHTML = `
-            <div class="queue-img">
-                ${imgHtml}
-                ${indicatorHtml}
-            </div>
-            <div class="queue-info">
-                <div class="queue-title">${title}</div>
-                <div class="queue-artist">${artist}</div>
-            </div>
+          <div class="queue-img">
+            ${imgHtml}
+            ${indicatorHtml}
+          </div>
+          <div class="queue-info">
+            <div class="queue-title">${title}</div>
+            <div class="queue-artist">${artist}</div>
+          </div>
         `;
 
         row.onclick = (e) => {
           e.stopPropagation();
           const playButton = item.querySelector('.play-button') || item.querySelector('ytmusic-play-button-renderer');
           if (playButton) {
-              playButton.click();
+            playButton.click();
           } else {
-              item.click();
+            item.click();
           }
           setTimeout(() => this.syncQueue(), 500);
         };
@@ -703,7 +1292,9 @@ const TEXTS = {
     }
   };
 
-  /* ========================================================= */
+
+
+  // ===================== DeepL / LRC / 翻訳関連 =====================
 
   const resolveDeepLTargetLang = (lang) => {
     switch ((lang || '').toLowerCase()) {
@@ -763,11 +1354,12 @@ const TEXTS = {
     hasTimestamp = hasTs;
     return lines;
   };
+
   const hoverTimeInfoSetup = () => {
     const timeToSeconds = (str) => {
       const [m, s] = str.split(":").map(Number);
       return m * 60 + s;
-    }
+    };
     const removeHoverTimeInfo = () => {
       const info = document.querySelector('#hover-time-info');
       const interval = setInterval(() => {
@@ -776,7 +1368,7 @@ const TEXTS = {
           clearInterval(interval);
         }
       }, 1000);
-    }
+    };
     const createHoverTimeInfo = () => {
       let info = document.querySelector('#hover-time-info-new');
       const parent = document.querySelector('ytmusic-player-bar');
@@ -787,27 +1379,27 @@ const TEXTS = {
         info.textContent = '0:00';
         parent.appendChild(info);
       }
-    }
+    };
     const adjustHoverTimeInfoPosition = () => {
       const info = document.querySelector('#hover-time-info-new');
       const slider = document.querySelector(
         'tp-yt-paper-slider#progress-bar tp-yt-paper-progress#sliderBar #primaryProgress'
-      ).parentElement.parentElement;//確実に指定したい
+      ).parentElement.parentElement;
       const playerBar = document.querySelector('ytmusic-player-bar');
       const refresh = () => {
         const onMove = (e) => {
           const marginLeft = (playerBar.parentElement.offsetWidth - playerBar.offsetWidth) / 2;
           const infoLeft = e.clientX - marginLeft;
           const relativeMouseX = e.clientX - marginLeft;
-          const timeinfo = document.querySelector('#left-controls > span')
-          const songLengthSeconds = timeToSeconds(timeinfo.textContent.replace(/^[^/]+\/\s*/, "")); //曲の長さを取得
-          const relativePosition = Math.round((Math.min(1,Math.max(0,(relativeMouseX / slider.offsetWidth)))) * 1000) /1000;//0~1の範囲にして小数点3位までに四捨五入する
+          const timeinfo = document.querySelector('#left-controls > span');
+          const songLengthSeconds = timeToSeconds(timeinfo.textContent.replace(/^[^/]+\/\s*/, ""));
+          const relativePosition = Math.round((Math.min(1,Math.max(0,(relativeMouseX / slider.offsetWidth)))) * 1000) /1000;
           const hoverTimeSeconds = Math.floor(songLengthSeconds * relativePosition);
           const hoverTimeString = `${String(Math.floor(hoverTimeSeconds / 60))}:${String(hoverTimeSeconds % 60).padStart(2, '0')}`;
           info.style.display = 'block';
           info.style.left = `${infoLeft}px`;
           info.textContent = hoverTimeString;
-        }
+        };
         const hide = () => {
           info.style.display = 'none';
         };
@@ -820,11 +1412,12 @@ const TEXTS = {
           clearInterval(interval);
         }
       }, 1000);
-    }
+    };
     removeHoverTimeInfo();
     createHoverTimeInfo();
     adjustHoverTimeInfoPosition();
-  }
+  };
+
   const parseLRCNoFlag = (lrc) => {
     return parseLRCInternal(lrc).lines;
   };
@@ -990,6 +1583,8 @@ const TEXTS = {
     return null;
   };
 
+  // ===================== メタ情報取得 =====================
+
   const getMetadata = () => {
     if (navigator.mediaSession?.metadata) {
       const { title, artist, artwork } = navigator.mediaSession.metadata;
@@ -999,10 +1594,10 @@ const TEXTS = {
         src: artwork.length ? artwork[artwork.length - 1].src : null
       };
     }
-    const t = document.querySelector('yt-formatted-string.title.style-scope.ytmusic-player-bar');
-    const a = document.querySelector('.byline.style-scope.ytmusic-player-bar');
-    return (t && a)
-      ? { title: t.textContent, artist: a.textContent.split('•')[0].trim(), src: null }
+    const tEl = document.querySelector('yt-formatted-string.title.style-scope.ytmusic-player-bar');
+    const aEl = document.querySelector('.byline.style-scope.ytmusic-player-bar');
+    return (tEl && aEl)
+      ? { title: tEl.textContent, artist: aEl.textContent.split('•')[0].trim(), src: null }
       : null;
   };
 
@@ -1055,6 +1650,8 @@ const TEXTS = {
     document.body.dataset.autohideSetup = 'true';
     handleInteraction();
   }
+
+  // ===================== 歌詞＋翻訳適用 =====================
 
   async function applyTranslations(baseLines, youtubeUrl) {
     if (!config.useTrans || !Array.isArray(baseLines) || !baseLines.length) return baseLines;
@@ -1213,6 +1810,8 @@ const TEXTS = {
     renderLyrics(finalLines);
   }
 
+  // ===================== 歌詞候補・ロック関連 =====================
+
   async function selectCandidateById(candId) {
     if (!Array.isArray(lyricsCandidates) || !lyricsCandidates.length) return;
     const cand = lyricsCandidates.find((c, idx) => (c.id || String(idx)) === candId);
@@ -1350,34 +1949,36 @@ const TEXTS = {
     }
   }
 
+  // ===================== Upload Menu / Delete Dialog / Settings =====================
+
   function setupUploadMenu(uploadBtn) {
     if (!ui.btnArea || ui.uploadMenu) return;
     ui.btnArea.style.position = 'relative';
     const menu = createEl('div', 'ytm-upload-menu', 'ytm-upload-menu');
     menu.innerHTML = `
-            <div class="ytm-upload-menu-title">Lyrics</div>
-            <button class="ytm-upload-menu-item" data-action="local">
-                <span class="ytm-upload-menu-item-icon">💾</span>
-                <span>ローカル歌詞読み込み / ReadLyrics</span>
-            </button>
-            <button class="ytm-upload-menu-item" data-action="add-sync">
-                <span class="ytm-upload-menu-item-icon">✨</span>
-                <span>歌詞同期を追加 / AddTiming</span>
-            </button>
-            <div class="ytm-upload-menu-locks" style="display:none;">
-                <div class="ytm-upload-menu-subtitle">歌詞を確定 / Confirm</div>
-                <div class="ytm-upload-menu-lock-list"></div>
-            </div>
-            <div class="ytm-upload-menu-separator"></div>
-            <button class="ytm-upload-menu-item" data-action="fix">
-                <span class="ytm-upload-menu-item-icon">✏️</span>
-                <span>歌詞の間違いを修正 / FixLyrics</span>
-            </button>
-            <div class="ytm-upload-menu-candidates" style="display:none;">
-                <div class="ytm-upload-menu-subtitle">別の歌詞を選択</div>
-                <div class="ytm-upload-menu-candidate-list"></div>
-            </div>
-        `;
+      <div class="ytm-upload-menu-title">Lyrics</div>
+      <button class="ytm-upload-menu-item" data-action="local">
+        <span class="ytm-upload-menu-item-icon">💾</span>
+        <span>ローカル歌詞読み込み / ReadLyrics</span>
+      </button>
+      <button class="ytm-upload-menu-item" data-action="add-sync">
+        <span class="ytm-upload-menu-item-icon">✨</span>
+        <span>歌詞同期を追加 / AddTiming</span>
+      </button>
+      <div class="ytm-upload-menu-locks" style="display:none;">
+        <div class="ytm-upload-menu-subtitle">歌詞を確定 / Confirm</div>
+        <div class="ytm-upload-menu-lock-list"></div>
+      </div>
+      <div class="ytm-upload-menu-separator"></div>
+      <button class="ytm-upload-menu-item" data-action="fix">
+        <span class="ytm-upload-menu-item-icon">✏️</span>
+        <span>歌詞の間違いを修正 / FixLyrics</span>
+      </button>
+      <div class="ytm-upload-menu-candidates" style="display:none;">
+        <div class="ytm-upload-menu-subtitle">別の歌詞を選択</div>
+        <div class="ytm-upload-menu-candidate-list"></div>
+      </div>
+    `;
     ui.btnArea.appendChild(menu);
     ui.uploadMenu = menu;
     const toggleMenu = (show) => {
@@ -1441,16 +2042,16 @@ const TEXTS = {
     if (!ui.btnArea || ui.deleteDialog) return;
     ui.btnArea.style.position = 'relative';
     const dialog = createEl('div', 'ytm-delete-dialog', 'ytm-confirm-dialog', `
-            <div class="ytm-confirm-title">歌詞を削除</div>
-            <div class="ytm-confirm-message">
-                この曲の保存済み歌詞を削除しますか？<br>
-                <span style="font-size:11px;opacity:0.7;">ローカルキャッシュのみ削除されます。</span>
-            </div>
-            <div class="ytm-confirm-buttons">
-                <button class="ytm-confirm-btn cancel">キャンセル</button>
-                <button class="ytm-confirm-btn danger">削除</button>
-            </div>
-        `);
+      <div class="ytm-confirm-title">歌詞を削除</div>
+      <div class="ytm-confirm-message">
+        この曲の保存済み歌詞を削除しますか？<br>
+        <span style="font-size:11px;opacity:0.7;">ローカルキャッシュのみ削除されます。</span>
+      </div>
+      <div class="ytm-confirm-buttons">
+        <button class="ytm-confirm-btn cancel">キャンセル</button>
+        <button class="ytm-confirm-btn danger">削除</button>
+      </div>
+    `);
     ui.btnArea.appendChild(dialog);
     ui.deleteDialog = dialog;
     const toggleDialog = (show) => {
@@ -1524,68 +2125,72 @@ const TEXTS = {
   function initSettings() {
     if (ui.settings) return;
     ui.settings = createEl('div', 'ytm-settings-panel', '', `
-            <button id="ytm-settings-close-btn" style="position:absolute;right:12px;top:10px;width:24px;height:24px;border-radius:999px;border:none;background:rgba(255,255,255,0.08);color:#fff;font-size:16px;line-height:1;cursor:pointer;">×</button>
-            <h3>${t('settings_title')}</h3>
-            
-            <div class="setting-item ytm-lang-section">
-                <div class="ytm-lang-label">${t('settings_ui_lang')}</div>
-                <div class="ytm-lang-group" id="ui-lang-group">
-                    <button class="ytm-lang-pill" data-value="ja">日本語</button>
-                    <button class="ytm-lang-pill" data-value="en">English</button>
-                </div>
-            </div>
-
-            <div class="setting-item" style="margin-top:10px;">
-                <label class="toggle-label">
-                    <span>${t('settings_trans')}</span>
-                    <input type="checkbox" id="trans-toggle">
-                </label>
-            </div>
-            <div class="setting-item ytm-lang-section">
-                <div class="ytm-lang-label">${t('settings_main_lang')}</div>
-                <div class="ytm-lang-group" id="main-lang-group">
-                    <button class="ytm-lang-pill" data-value="original">Original</button>
-                    <button class="ytm-lang-pill" data-value="ja">日本語</button>
-                    <button class="ytm-lang-pill" data-value="en">English</button>
-                    <button class="ytm-lang-pill" data-value="ko">한국어</button>
-                </div>
-            </div>
-            <div class="setting-item ytm-lang-section">
-                <div class="ytm-lang-label">${t('settings_sub_lang')}</div>
-                <div class="ytm-lang-group" id="sub-lang-group">
-                    <button class="ytm-lang-pill" data-value="">なし</button>
-                    <button class="ytm-lang-pill" data-value="ja">日本語</button>
-                    <button class="ytm-lang-pill" data-value="en">English</button>
-                    <button class="ytm-lang-pill" data-value="ko">한국어</button>
-                </div>
-            </div>
-            <div class="setting-item" style="margin-top:15px;">
-                <input type="password" id="deepl-key-input" placeholder="DeepL API Key">
-            </div>
-            <div style="display:flex; gap:10px; margin-top:20px;">
-                <button id="save-settings-btn" style="flex:1;">${t('settings_save')}</button>
-                <button id="clear-all-btn" style="background:#ff3b30; color:white;">${t('settings_reset')}</button>
-            </div>
-        `);
-    document.body.appendChild(ui.settings);
-    (async () => {
-      if (!config.deepLKey) config.deepLKey = await storage.get('ytm_deepl_key');
-      const cachedTrans = await storage.get('ytm_trans_enabled');
-      if (cachedTrans !== null && cachedTrans !== undefined) config.useTrans = cachedTrans;
-      const mainLangStored = await storage.get('ytm_main_lang');
-      const subLangStored = await storage.get('ytm_sub_lang');
-      if (mainLangStored) config.mainLang = mainLangStored;
-      if (subLangStored !== null && subLangStored !== undefined) config.subLang = subLangStored;
-      const uiLangStored = await storage.get('ytm_ui_lang');
-      if (uiLangStored) config.uiLang = uiLangStored;
-
-      document.getElementById('deepl-key-input').value = config.deepLKey || '';
-      document.getElementById('trans-toggle').checked = config.useTrans;
+      <button id="ytm-settings-close-btn" style="position:absolute;right:12px;top:10px;width:24px;height:24px;border-radius:999px;border:none;background:rgba(255,255,255,0.08);color:#fff;font-size:16px;line-height:1;cursor:pointer;">×</button>
+      <h3>${t('settings_title')}</h3>
       
-      setupLangPills('main-lang-group', config.mainLang, v => { config.mainLang = v; });
-      setupLangPills('sub-lang-group', config.subLang, v => { config.subLang = v; });
-      setupLangPills('ui-lang-group', config.uiLang || 'ja', v => { config.uiLang = v; });
-    })();
+      <div class="setting-item ytm-lang-section">
+        <div class="ytm-lang-label">${t('settings_ui_lang')}</div>
+        <div class="ytm-lang-group" id="ui-lang-group">
+        </div>
+      </div>
+
+      <div class="setting-item" style="margin-top:10px;">
+        <label class="toggle-label">
+          <span>${t('settings_trans')}</span>
+          <input type="checkbox" id="trans-toggle">
+        </label>
+      </div>
+      <div class="setting-item ytm-lang-section">
+        <div class="ytm-lang-label">${t('settings_main_lang')}</div>
+        <div class="ytm-lang-group" id="main-lang-group">
+          <button class="ytm-lang-pill" data-value="original">Original</button>
+          <button class="ytm-lang-pill" data-value="ja">日本語</button>
+          <button class="ytm-lang-pill" data-value="en">English</button>
+          <button class="ytm-lang-pill" data-value="ko">한국어</button>
+        </div>
+      </div>
+      <div class="setting-item ytm-lang-section">
+        <div class="ytm-lang-label">${t('settings_sub_lang')}</div>
+        <div class="ytm-lang-group" id="sub-lang-group">
+          <button class="ytm-lang-pill" data-value="">なし</button>
+          <button class="ytm-lang-pill" data-value="ja">日本語</button>
+          <button class="ytm-lang-pill" data-value="en">English</button>
+          <button class="ytm-lang-pill" data-value="ko">한국어</button>
+        </div>
+      </div>
+      <div class="setting-item" style="margin-top:15px;">
+        <input type="password" id="deepl-key-input" placeholder="DeepL API Key">
+      </div>
+      <div style="display:flex; gap:10px; margin-top:20px;">
+        <button id="save-settings-btn" style="flex:1;">${t('settings_save')}</button>
+        <button id="clear-all-btn" style="background:#ff3b30; color:white;">${t('settings_reset')}</button>
+      </div>
+    `);
+    document.body.appendChild(ui.settings);
+
+(async () => {
+  // ★ 追加：設定パネル初期化時にも GitHub から取得
+  await loadRemoteTextsFromGithub();
+
+  if (!config.deepLKey) config.deepLKey = await storage.get('ytm_deepl_key');
+  const cachedTrans = await storage.get('ytm_trans_enabled');
+  if (cachedTrans !== null && cachedTrans !== undefined) config.useTrans = cachedTrans;
+  const mainLangStored = await storage.get('ytm_main_lang');
+  const subLangStored = await storage.get('ytm_sub_lang');
+  if (mainLangStored) config.mainLang = mainLangStored;
+  if (subLangStored !== null && subLangStored !== undefined) config.subLang = subLangStored;
+  const uiLangStored = await storage.get('ytm_ui_lang');
+  if (uiLangStored) config.uiLang = uiLangStored;
+
+  document.getElementById('deepl-key-input').value = config.deepLKey || '';
+  document.getElementById('trans-toggle').checked = config.useTrans;
+
+  setupLangPills('main-lang-group', config.mainLang, v => { config.mainLang = v; });
+  setupLangPills('sub-lang-group', config.subLang, v => { config.subLang = v; });
+
+  refreshUiLangGroup();
+})();
+
     document.getElementById('save-settings-btn').onclick = () => {
       config.deepLKey = document.getElementById('deepl-key-input').value.trim();
       config.useTrans = document.getElementById('trans-toggle').checked;
@@ -1619,20 +2224,20 @@ const TEXTS = {
 
   function createReplayPanel() {
     ui.replayPanel = createEl('div', 'ytm-replay-panel', '', `
-        <button class="replay-close-btn">×</button>
-        <h3>Daily Replay</h3>
-        
-        <div class="ytm-lang-group" style="margin-bottom: 20px;">
-            <button class="ytm-lang-pill active" data-range="day">${t('replay_today')}</button>
-            <button class="ytm-lang-pill" data-range="week">${t('replay_week')}</button>
-            <button class="ytm-lang-pill" data-range="all">${t('replay_all')}</button>
-        </div>
+      <button class="replay-close-btn">×</button>
+      <h3>Daily Replay</h3>
+      
+      <div class="ytm-lang-group" style="margin-bottom: 20px;">
+        <button class="ytm-lang-pill active" data-range="day">${t('replay_today')}</button>
+        <button class="ytm-lang-pill" data-range="week">${t('replay_week')}</button>
+        <button class="ytm-lang-pill" data-range="all">${t('replay_all')}</button>
+      </div>
 
-        <div class="ytm-replay-content">
-            <div class="lyric-loading">Calculating...</div>
-        </div>
+      <div class="ytm-replay-content">
+        <div class="lyric-loading">Calculating...</div>
+      </div>
 
-        <button id="replay-reset-action" class="replay-footer-btn">${t('settings_reset')} History</button>
+      <button id="replay-reset-action" class="replay-footer-btn">${t('settings_reset')} History</button>
     `);
 
     document.body.appendChild(ui.replayPanel);
@@ -1698,7 +2303,24 @@ const TEXTS = {
     };
 
     const trashBtnConfig = { txt: '🗑️', cls: 'icon-btn', click: () => { } };
-    const settingsBtnConfig = { txt: '⚙️', cls: 'icon-btn', click: () => { initSettings(); ui.settings.classList.toggle('active'); } };
+    const settingsBtnConfig = {
+  txt: '⚙️',
+  cls: 'icon-btn',
+  click: async () => {
+    // パネルがなければ一度だけ生成
+    initSettings();
+
+    // ★ ここで毎回 GitHub の ui.json を取りに行く
+    await loadRemoteTextsFromGithub();
+
+    // 取得した UI_TEXTS をもとに言語ピルを作り直す
+    refreshUiLangGroup();
+
+    // パネルの開閉
+    ui.settings.classList.toggle('active');
+  }
+};
+
 
     btns.push(lyricsBtnConfig, shareBtnConfig, replayBtnConfig, trashBtnConfig, settingsBtnConfig);
 
@@ -1890,7 +2512,7 @@ const TEXTS = {
     e.target.value = '';
   };
 
- function startLyricRafLoop() {
+  function startLyricRafLoop() {
     if (lyricRafId !== null) return;
     const loop = () => {
       const v = document.querySelector('video');
@@ -1899,10 +2521,8 @@ const TEXTS = {
         return;
       }
 
-     
       let t = v.currentTime;
 
-   
       if (timeOffset > 0 && t < timeOffset) {
         timeOffset = 0;
       }
@@ -1941,7 +2561,6 @@ const TEXTS = {
         }
         if (firstActivate) {
           r.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    
           ReplayManager.incrementLyricCount();
         }
         if (dynamicLines && dynamicLines[i] && Array.isArray(dynamicLines[i].chars)) {
@@ -1978,6 +2597,8 @@ const TEXTS = {
     });
     lastActiveIndex = isInterlude ? -1 : idx;
   }
+
+  // ===================== Share 機能 =====================
 
   function onShareButtonClick() {
     if (!lyricsData.length) {
@@ -2203,6 +2824,8 @@ const TEXTS = {
     }
   }
 
+  // ===================== メイン tick ループ =====================
+
   const tick = async () => {
     if (!document.getElementById('my-mode-toggle')) {
       const rc = document.querySelector('.right-controls-buttons');
@@ -2234,50 +2857,50 @@ const TEXTS = {
         } catch (e) { }
       });
     })();
-    const meta = getMetadata();
-    if (!meta) return;
-    const key = `${meta.title}///${meta.artist}`;
-    
+        const meta = getMetadata();
+           if (!meta) return;
+           const key = `${meta.title}///${meta.artist}`;
+           
+           if (currentKey !== key) {
+             // ★ 曲が変わったタイミングでクラウド自動同期
+             if (currentKey !== null && CloudSync && typeof CloudSync.syncNow === 'function') {
+               CloudSync.syncNow();  // 非同期だが await は不要
+             }
+       
+             const v = document.querySelector('video');
+             if (currentKey === null) {
+               timeOffset = 0; 
+             } else {
+               timeOffset = v ? v.currentTime : 0; 
+             }
+       
+             currentKey = key;
+             lyricsData = [];
+             dynamicLines = null;
+             lyricsCandidates = null;
+             selectedCandidateId = null;
+             lyricsRequests = null;
+             lyricsConfig = null;
+             shareMode = false;
+             shareStartIndex = null;
+             shareEndIndex = null;
+             document.body.classList.remove('ytm-share-select-mode');
+             if (ui.shareBtn) ui.shareBtn.classList.remove('share-active');
+             lastActiveIndex = -1;
+             lastTimeForChars = -1;
+       
+             if (ui.queuePanel && ui.queuePanel.classList.contains('visible')) {
+               QueueManager.onSongChanged();
+             }
+       
+             updateMetaUI(meta);
+             refreshCandidateMenu();
+             refreshLockMenu();
+             if (ui.lyrics) ui.lyrics.scrollTop = 0;
+             loadLyrics(meta);
+           }
+         };
 
-    if (currentKey !== key) {
-      
-      const v = document.querySelector('video');
-      if (currentKey === null) {
-        timeOffset = 0; 
-      } else {
-        timeOffset = v ? v.currentTime : 0; 
-      }
-  
-
-      currentKey = key;
-      lyricsData = [];
-      dynamicLines = null;
-      lyricsCandidates = null;
-      selectedCandidateId = null;
-      lyricsRequests = null;
-      lyricsConfig = null;
-      shareMode = false;
-      shareStartIndex = null;
-      shareEndIndex = null;
-      document.body.classList.remove('ytm-share-select-mode');
-      if (ui.shareBtn) ui.shareBtn.classList.remove('share-active');
-      lastActiveIndex = -1;
-      lastTimeForChars = -1;
-
-      if (ui.queuePanel && ui.queuePanel.classList.contains('visible')) {
-          QueueManager.onSongChanged();
-      }
-
-      updateMetaUI(meta);
-      refreshCandidateMenu();
-      refreshLockMenu();
-      if (ui.lyrics) ui.lyrics.scrollTop = 0;
-      loadLyrics(meta);
-    }
-    
-      };
-  
-  
   function updateMetaUI(meta) {
     ui.title.innerText = meta.title;
     ui.artist.innerText = meta.artist;
@@ -2288,9 +2911,13 @@ const TEXTS = {
     ui.lyrics.innerHTML = '<div class="lyric-loading" style="opacity:0.5; padding:20px;">Loading...</div>';
   }
 
-  // 初期化
+  // ===================== 初期化 =====================
+
   ReplayManager.init();
   QueueManager.init();
+  CloudSync.init();
+
+  loadRemoteTextsFromGithub();
 
   console.log('YTM Immersion loaded.');
   setInterval(tick, 1000);
