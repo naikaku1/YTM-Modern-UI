@@ -1099,7 +1099,7 @@ body.ytm-custom-layout ytmusic-player-bar {
   left: 50% !important;
   transform: translateX(-50%) !important;
   width: 95% !important;
-  max-width: 975px !important;
+  max-width: 1000px !important;
   height: 80px !important;
   border-radius: 40px !important;
   background: rgba(20, 20, 20, 0.6) !important;
