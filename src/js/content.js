@@ -1310,13 +1310,78 @@
       const trigger = createEl('div', 'ytm-queue-trigger');
       document.body.appendChild(trigger);
       const panel = createEl('div', 'ytm-queue-panel', '', `
-        <h3>Up Next</h3>
+        <div class="queue-header" style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <h3 style="margin:0;line-height:1.1;">Up Next</h3>
+          <button class="queue-pin" type="button" title="Pin" aria-label="Pin Up Next" style="
+            cursor:pointer;
+            padding:6px 8px;
+            border-radius:10px;
+            border:1px solid rgba(255,255,255,0.18);
+            background:rgba(255,255,255,0.06);
+            color:inherit;
+            font-size:14px;
+            line-height:1;
+            user-select:none;
+          ">📌</button>
+        </div>
         <div class="queue-list-content">
             <div class="lyric-loading">Loading...</div>
         </div>
       `);
       document.body.appendChild(panel);
       ui.queuePanel = panel;
+
+      // ===== Pin to keep Up Next always visible =====
+      const PIN_KEY = 'ytm_queue_pinned';
+      const pinBtn = panel.querySelector('.queue-pin');
+
+      const applyPinnedUI = (pinned) => {
+        if (!pinBtn) return;
+        if (pinned) {
+          pinBtn.dataset.pinned = '1';
+          pinBtn.textContent = '📍';
+          pinBtn.style.background = 'rgba(255,255,255,0.14)';
+          pinBtn.style.border = '1px solid rgba(190, 255, 110, 0.55)';
+          pinBtn.style.boxShadow = '0 0 0 1px rgba(190,255,110,0.18), 0 0 10px rgba(190,255,110,0.12)';
+          pinBtn.style.transform = 'translateZ(0)';
+        } else {
+          pinBtn.dataset.pinned = '';
+          pinBtn.textContent = '📌';
+          pinBtn.style.background = 'rgba(255,255,255,0.06)';
+          pinBtn.style.border = '1px solid rgba(255,255,255,0.18)';
+          pinBtn.style.boxShadow = 'none';
+        }
+      };
+
+      // Load persisted pin state
+      storage.get(PIN_KEY).then((v) => {
+        this.pinned = !!v;
+        applyPinnedUI(this.pinned);
+        if (this.pinned) openPanel();
+      });
+
+      if (pinBtn) {
+        pinBtn.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          this.pinned = !this.pinned;
+          storage.set(PIN_KEY, this.pinned);
+          applyPinnedUI(this.pinned);
+          if (this.pinned) {
+            openPanel();
+          } else {
+            // If unpinned and not hovered, close immediately
+            setTimeout(() => {
+              try {
+                if (!panel.matches(':hover') && !trigger.matches(':hover')) {
+                  panel.classList.remove('visible');
+                }
+              } catch (e) {}
+            }, 0);
+          }
+        });
+      }
+
 
       let leaveTimer = null;
       const openPanel = () => {
@@ -1325,6 +1390,7 @@
         this.syncQueue();
       };
       const closePanel = () => {
+        if (this.pinned) return;
         leaveTimer = setTimeout(() => {
           panel.classList.remove('visible');
         }, 300);
