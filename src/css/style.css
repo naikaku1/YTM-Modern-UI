@@ -1209,14 +1209,13 @@ body.ytm-custom-layout ytmusic-player-bar {
 }
 
 
-/* プログレスバー追加設定 */
-body.ytm-custom-layout ytmusic-player-bar tp-yt-paper-slider#progress-bar {
-  overflow: visible !important;
+body.ytm-custom-layout ytmusic-player-bar .middle-controls tp-yt-paper-slider#progress-bar {
+
+  transform: none !important;
   height: 32px !important;
   padding: 0 !important;
-  width: auto !important;
-  left: 7px !important;
-  right: 42px !important;
+
+  overflow: visible !important;
 }
 
 body.ytm-custom-layout ytmusic-player-bar tp-yt-paper-slider#progress-bar [role="slider"] {
@@ -2008,4 +2007,18 @@ ytmusic-player-bar .middle-controls tp-yt-paper-slider::before {
   right: 0;
   top: -12px;
   bottom: -12px;
+}
+
+/* プログレスバー追加設定（角丸の内側に収める） */
+body.ytm-custom-layout ytmusic-player-bar tp-yt-paper-slider#progress-bar {
+  overflow: visible !important;
+  height: 32px !important;
+  padding: 0 !important;
+  width: auto !important;
+  left: 7px !important;
+  right: 42px !important;
+}
+
+body.ytm-custom-layout ytmusic-player-bar tp-yt-paper-slider#progress-bar [role="slider"] {
+  overflow: visible !important;
 }
