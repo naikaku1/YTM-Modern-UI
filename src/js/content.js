@@ -159,10 +159,8 @@
       replay_empty: "まだ再生データがありません...",
       replay_no_data_sub: "曲を聴くとここに表示されます",
       replay_reset_confirm: "本当に再生履歴を全て削除しますか？\nこの操作は取り消せません。",
-
       replay_vibe: "あなたの雰囲気",
       replay_lyrics_heard: "累計行数",
-
       settings_title: "設定",
       settings_ui_lang: "UI言語 / Language",
       settings_trans: "歌詞翻訳機能を使う",
@@ -174,26 +172,111 @@
       settings_saved: "設定を保存しました",
       settings_sync_offset: "歌詞同期オフセット",
       settings_sync_offset_save: "曲が切り替わったときにオフセットをリセットしない",
-    }
-    ,
+      settings_fast_mode: "高速読み込みモード (カバー曲の精度は下がります)"
+    },
     en: {
-      settings_shared_trans: "Use shared translation (no API key)",
-      settings_trans: "Use lyrics translation",
-      settings_save: "Save settings",
+      unit_hour: "hours",
+      unit_minute: "minutes",
+      unit_second: "seconds",
+      replay_playTime: "Total play time",
+      replay_plays: "Plays",
+      replay_topSong: "Top song",
+      replay_topArtist: "Top artist",
+      replay_obsession: "On repeat",
+      replay_ranking: "Play count ranking",
+      replay_today: "Today",
+      replay_week: "This week",
+      replay_all: "All time",
+      replay_empty: "No play data yet...",
+      replay_no_data_sub: "Play some songs to see them here",
+      replay_reset_confirm: "Are you sure you want to delete all play history?\nThis action can't be undone.",
+      replay_vibe: "Your vibe",
+      replay_lyrics_heard: "Total lines",
       settings_title: "Settings",
+      settings_ui_lang: "UI Language / Language",
+      settings_trans: "Enable lyrics translation",
+      settings_shared_trans: "Use shared translation (no API key required)",
+      settings_main_lang: "Main language (large)",
+      settings_sub_lang: "Sub language (small)",
+      settings_save: "Save",
+      settings_reset: "Reset",
       settings_saved: "Settings saved",
+      settings_sync_offset: "Lyrics sync offset",
+      settings_sync_offset_save: "Don't reset offset when the song changes",
+      settings_fast_mode: "Fast Load Mode (May reduce accuracy for covers)"
+    },
+    ko: {
+      unit_hour: "시간",
+      unit_minute: "분",
+      unit_second: "초",
+      replay_playTime: "총 재생 시간",
+      replay_plays: "재생 횟수",
+      replay_topSong: "톱 곡",
+      replay_topArtist: "톱 아티스트",
+      replay_obsession: "반복 재생 중",
+      replay_ranking: "재생수 랭킹",
+      replay_today: "오늘",
+      replay_week: "이번 주",
+      replay_all: "전체 기간",
+      replay_empty: "아직 재생 데이터가 없습니다...",
+      replay_no_data_sub: "곡을 들으면 여기에 표시됩니다",
+      replay_reset_confirm: "정말로 재생 기록을 모두 삭제하시겠습니까?\n이 작업은 취소할 수 없습니다.",
+      replay_vibe: "당신의 분위기",
+      replay_lyrics_heard: "누적 행 수",
+      settings_title: "설정",
+      settings_ui_lang: "UI 언어 / Language",
+      settings_trans: "가사 번역 기능 사용",
+      settings_shared_trans: "공유 번역 사용 (API 키 불필요)",
+      settings_main_lang: "메인 언어 (크게 표시)",
+      settings_sub_lang: "서브 언어 (작게 표시)",
+      settings_save: "저장",
+      settings_reset: "초기화",
+      settings_saved: "설정을 저장했습니다",
+      settings_sync_offset: "가사 동기 오프셋",
+      settings_sync_offset_save: "곡이 바뀌어도 오프셋을 초기화하지 않기",
+      settings_fast_mode: "고속 로딩 모드"
+    },
+    zh: {
+      unit_hour: "小时",
+      unit_minute: "分钟",
+      unit_second: "秒",
+      replay_playTime: "总播放时长",
+      replay_plays: "播放次数",
+      replay_topSong: "热门歌曲",
+      replay_topArtist: "热门艺人",
+      replay_obsession: "循环播放中",
+      replay_ranking: "播放次数排行",
+      replay_today: "今天",
+      replay_week: "本周",
+      replay_all: "全部时间",
+      replay_empty: "还没有播放数据...",
+      replay_no_data_sub: "听歌后会在这里显示",
+      replay_reset_confirm: "确定要删除所有播放记录吗？\n此操作无法撤销。",
+      replay_vibe: "你的氛围",
+      replay_lyrics_heard: "累计行数",
+      settings_title: "设置",
+      settings_ui_lang: "UI 语言 / Language",
+      settings_trans: "启用歌词翻译",
+      settings_shared_trans: "使用共享翻译（无需 API 密钥）",
+      settings_main_lang: "主语言（大号显示）",
+      settings_sub_lang: "副语言（小号显示）",
+      settings_save: "保存",
+      settings_reset: "重置",
+      settings_saved: "已保存设置",
+      settings_sync_offset: "歌词同步偏移",
+      settings_sync_offset_save: "切歌时不重置偏移",
+      settings_fast_mode: "快速加载模式"
     }
-  };
-
-
+  }; 
+  
+  
   let UI_TEXTS = null;
 
 
   const t = (key) => {
     const lang = config.uiLang || 'ja';
 
-    // リモート文言は「言語テーブルが存在してもキーが欠ける」ことがあるので、
-    // キー単位でローカルフォールバックへ落とす。
+
     const remoteTable =
       (UI_TEXTS && UI_TEXTS[lang]) ||
       (UI_TEXTS && UI_TEXTS['ja']) ||
@@ -209,7 +292,7 @@
   };
 
 
-  // ===================== UI 言語: リポ から取得 =====================
+
 
   const REMOTE_TEXTS_URL =
     'https://raw.githubusercontent.com/naikaku1/YTM-Modern-UI/main/src/lang/ui.json';
@@ -235,7 +318,7 @@
     refreshUiLangGroup();
   }
 
-  // UI 言語ピルを TEXTS の中身から自動生成
+
 
   let uiLangEtcClickSetup = false;
 
@@ -246,18 +329,18 @@
     const current = config.uiLang || 'ja';
     group.innerHTML = '';
 
-    // 利用可能な言語一覧
+
     const langs = UI_TEXTS
       ? Object.keys(UI_TEXTS)
       : Object.keys(LOCAL_FALLBACK_TEXTS);
 
     if (!langs.length) return;
 
-    const MAX_DIRECT = 3; // ここまでが普通のボタン
+    const MAX_DIRECT = 3; 
     const directLangs = langs.slice(0, MAX_DIRECT);
     const hasMore = langs.length > MAX_DIRECT;
 
-    // ---- 直接ボタン（最大3つ） ----
+
     directLangs.forEach((code) => {
       const btn = document.createElement('button');
       btn.className = 'ytm-lang-pill';
@@ -266,7 +349,7 @@
       group.appendChild(btn);
     });
 
-    // ---- etc... ボタン ＋ スクロールメニュー ----
+
     if (hasMore) {
       const etcBtn = document.createElement('button');
       etcBtn.className = 'ytm-lang-pill ytm-lang-pill-etc';
@@ -274,7 +357,7 @@
       etcBtn.textContent = 'etc...';
       group.appendChild(etcBtn);
 
-      // メニュー本体（スクロール可能）
+
       let menu = document.getElementById('ui-lang-etc-menu');
       if (!menu) {
         menu = document.createElement('div');
@@ -293,7 +376,7 @@
         document.body.appendChild(menu);
       }
 
-      // メニュー中身を作り直す（無制限）
+
       menu.innerHTML = '';
       langs.forEach((code) => {
         const item = document.createElement('button');
@@ -1597,7 +1680,7 @@
           const youtubeUrl = videoId ? `https://youtu.be/${videoId}` : null;
           this._prefetchLyrics({ title, artist, videoId, youtubeUrl });
         }
-        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★
+
 
         const uniqueKey = `${title}///${artist}`;
         if (seenKeys.has(uniqueKey)) return;
@@ -1649,53 +1732,37 @@
 
 
   const PipManager = {
-    pipWindow: null,
-    pipLyricsContainer: null,
-    progressRing: null,
-    playButton: null,
+    async start() {
+      if (document.pictureInPictureElement) return;
 
-    icons: {
-      play: '<svg class="icon" viewBox="0 0 24 24" fill="#fff" style="width:28px;height:28px;"><path d="M8 5v14l11-7z"/></svg>',
-      pause: '<svg class="icon" viewBox="0 0 24 24" fill="#fff" style="width:28px;height:28px;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>'
-    },
-
-    toggle: async function () {
-      if (this.pipWindow) {
-        this.pipWindow.close();
-        return;
-      }
-      await this.start();
-    },
-
-    start: async function () {
-      if (!window.documentPictureInPicture) return;
-      if (!ui.lyrics) return;
 
       try {
-        this.pipWindow = await window.documentPictureInPicture.requestWindow({
-          width: 380, height: 600,
+        this.pipWindow = await documentPictureInPicture.requestWindow({
+          width: 380,
+          height: 600,
         });
       } catch (e) {
         console.error('PiP failed:', e);
         return;
       }
 
+      const pipDoc = this.pipWindow.document;
+
+    
       [...document.styleSheets].forEach((styleSheet) => {
         try {
           if (styleSheet.href) {
-            const link = document.createElement('link');
+            const link = pipDoc.createElement('link');
             link.rel = 'stylesheet';
             link.type = styleSheet.type;
             link.media = styleSheet.media;
             link.href = styleSheet.href;
-            this.pipWindow.document.head.appendChild(link);
+            pipDoc.head.appendChild(link);
           }
         } catch (e) { }
       });
 
-      const pipDoc = this.pipWindow.document;
-
-      const forceStyle = document.createElement('style');
+      const forceStyle = pipDoc.createElement('style');
       forceStyle.textContent = `
         body {
           margin: 0; overflow: hidden;
@@ -1745,17 +1812,14 @@
           opacity: 1 !important;
         }
         
-        /* ★修正：一文字追跡用のスタイルを強化★ */
         .lyric-line.active .lyric-char {
             display: inline-block;
             transition: opacity 0.1s linear, transform 0.1s linear, text-shadow 0.1s linear;
         }
-        /* まだ歌われていない文字は薄く */
         .lyric-line.active .lyric-char.char-pending {
             opacity: 0.35 !important;
             text-shadow: none !important;
         }
-        /* 今歌われている文字は白く光らせる */
         .lyric-line.active .lyric-char.char-active {
             opacity: 1 !important;
             color: #ffffff !important;
@@ -1766,51 +1830,32 @@
         .lyric-translation { font-size: 0.65em; opacity: 0.7; font-weight: 600; margin-top: 6px; display: block; }
         #pip-lyrics-container::-webkit-scrollbar { display: none; }
         #pip-lyrics-container { -ms-overflow-style: none; scrollbar-width: none; }
-        
-        #pip-controls {
-            opacity: 0; transform: translateY(20px);
-            transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+
+        body.ytm-no-timestamp .lyric-line {
+          color: #fff !important;
+          filter: blur(0) !important;
+          transform: scale(1) !important;
+          opacity: 1 !important;
+          cursor: default !important;
+          margin-bottom: 20px !important;
+          text-shadow: 0 0 10px rgba(0, 0, 0, 0.3) !important;
         }
-        body:hover #pip-controls {
-            opacity: 1; transform: translateY(0);
-        }
-        .pip-btn {
-            background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.1);
-            color: #fff; width: 50px; height: 50px; border-radius: 50%;
-            cursor: pointer; backdrop-filter: blur(20px);
-            transition: 0.2s; display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.2);
-        }
-        .pip-btn:hover { background: rgba(255,255,255,0.25); transform: scale(1.1); }
-        .pip-btn:active { transform: scale(0.95); }
-        .pip-btn-play {
-            width: 70px; height: 70px; position: relative;
-            background: rgba(255,255,255,0.15);
-        }
-        .pip-btn-play svg.icon { width: 30px; height: 30px; }
-        .progress-ring {
-            position: absolute; top: 0; left: 0; width: 70px; height: 70px;
-            transform: rotate(-90deg); pointer-events: none;
-        }
-        .progress-ring__circle {
-            transition: stroke-dashoffset 0.1s linear;
-            stroke: rgba(255, 255, 255, 0.9);
-            stroke-width: 3;
-            fill: transparent;
-            stroke-linecap: round;
-        }
-      `;
+    `;
       pipDoc.head.appendChild(forceStyle);
       pipDoc.body.className = 'ytm-pip-mode';
 
-      const bgLayer = document.createElement('div'); bgLayer.id = 'pip-bg-layer';
+      if (document.body.classList.contains('ytm-no-timestamp')) {
+        pipDoc.body.classList.add('ytm-no-timestamp');
+      }
+
+      const bgLayer = pipDoc.createElement('div'); bgLayer.id = 'pip-bg-layer';
       pipDoc.body.appendChild(bgLayer);
-      const noiseLayer = document.createElement('div'); noiseLayer.id = 'pip-noise-layer';
+      const noiseLayer = pipDoc.createElement('div'); noiseLayer.id = 'pip-noise-layer';
       pipDoc.body.appendChild(noiseLayer);
-      const bgOverlay = document.createElement('div'); bgOverlay.id = 'pip-bg-overlay';
+      const bgOverlay = pipDoc.createElement('div'); bgOverlay.id = 'pip-bg-overlay';
       pipDoc.body.appendChild(bgOverlay);
 
-      const container = document.createElement('div');
+      const container = pipDoc.createElement('div');
       container.style.display = 'flex';
       container.style.flexDirection = 'column';
       container.style.height = '100vh';
@@ -1822,7 +1867,7 @@
       const artworkUrl = ui.artwork.querySelector('img')?.src || '';
       bgLayer.style.backgroundImage = `url(${artworkUrl})`;
 
-      const header = document.createElement('div');
+      const header = pipDoc.createElement('div');
       header.style.width = '100%';
       header.style.padding = '30px 20px 20px 20px';
       header.style.textAlign = 'center';
@@ -1850,11 +1895,11 @@
       `;
       container.appendChild(header);
 
-      this.pipLyricsContainer = document.createElement('div');
+      this.pipLyricsContainer = pipDoc.createElement('div');
       this.pipLyricsContainer.id = 'pip-lyrics-container';
       this.pipLyricsContainer.style.height = '100%';
       this.pipLyricsContainer.style.overflowY = 'auto';
-      this.pipLyricsContainer.style.padding = '10px 24px 140px 24px';
+      this.pipLyricsContainer.style.padding = '10px 24px 40px 24px';
       this.pipLyricsContainer.style.flex = '1';
       this.pipLyricsContainer.style.width = '100%';
       this.pipLyricsContainer.style.boxSizing = 'border-box';
@@ -1878,55 +1923,24 @@
         }
       });
 
-      const controls = document.createElement('div');
-      controls.id = 'pip-controls';
-      controls.style.boxSizing = 'border-box';
-      controls.style.padding = '30px';
-      controls.style.display = 'flex';
-      controls.style.justifyContent = 'center';
-      controls.style.alignItems = 'center';
-      controls.style.gap = '30px';
-      controls.style.position = 'absolute';
-      controls.style.bottom = '0';
-      controls.style.left = '0';
-      controls.style.width = '100%';
-      controls.style.background = 'linear-gradient(to top, rgba(0,0,0,0.9), transparent)';
-
-      const mkBtn = (innerHtml, onClick, isPlay = false) => {
-        const b = document.createElement('button');
-        if (isPlay) {
-          b.className = 'pip-btn pip-btn-play';
-          b.innerHTML = `
-              <svg class="progress-ring" width="70" height="70">
-                <circle class="progress-ring__circle" stroke="white" stroke-width="3" fill="transparent" r="32" cx="35" cy="35" style="stroke-dasharray: 201; stroke-dashoffset: 201;"/>
-              </svg>
-              <span class="icon-wrap">${innerHtml}</span>
-            `;
-          setTimeout(() => { this.progressRing = b.querySelector('.progress-ring__circle'); }, 0);
-          this.playButton = b;
-        } else {
-          b.className = 'pip-btn';
-          b.innerHTML = innerHtml;
-        }
-        b.addEventListener('click', onClick);
-        return b;
-      };
-
-      controls.appendChild(mkBtn('<svg class="icon" viewBox="0 0 24 24" fill="#fff" width="24" height="24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>', () => document.querySelector('.previous-button')?.click()));
-      controls.appendChild(mkBtn(this.icons.play, () => document.querySelector('.play-pause-button')?.click(), true));
-      controls.appendChild(mkBtn('<svg class="icon" viewBox="0 0 24 24" fill="#fff" width="24" height="24"><path d="M6 18l8.5-6L6 6v12M16 6v12h2V6h-2z"/></svg>', () => document.querySelector('.next-button')?.click()));
-
-      container.appendChild(controls);
-
       startLyricRafLoop();
 
       this.pipWindow.addEventListener('pagehide', () => {
         this.pipWindow = null;
         this.pipLyricsContainer = null;
-        this.progressRing = null;
-        this.playButton = null;
         startLyricRafLoop();
       });
+    },
+
+    pipWindow: null,
+    pipLyricsContainer: null,
+
+    toggle: async function () {
+      if (this.pipWindow) {
+        this.pipWindow.close();
+        return;
+      }
+      await this.start();
     },
 
     updateMeta: function (title, artist) {
@@ -1952,16 +1966,9 @@
     },
 
     updatePlayState: function (isPaused) {
-      if (!this.pipWindow || !this.playButton) return;
-      const wrap = this.playButton.querySelector('.icon-wrap');
-      if (!wrap) return;
-      const targetIcon = isPaused ? this.icons.play : this.icons.pause;
-      if (wrap.innerHTML !== targetIcon) {
-        wrap.innerHTML = targetIcon;
-      }
+    
     }
-  };          // ===================== DeepL / LRC / 翻訳関連 =====================
-
+  };
   const resolveDeepLTargetLang = (lang) => {
     switch ((lang || '').toLowerCase()) {
       case 'en': case 'en-us': case 'en-gb': return 'EN';
@@ -2007,7 +2014,6 @@
         const rawText = lrc.slice(lastIndex, match.index);
         const cleaned = rawText.replace(/\r?\n/g, ' ');
         const text = cleaned.trim();
-        // ★修正: 空行(明示的な改行のみ)も保持してタイムスタンプのズレを防ぐ
         const hasLineBreak = /[\r\n]/.test(rawText);
         if (text || hasLineBreak) {
           result.push({ time: lastTime, text });
@@ -2854,6 +2860,9 @@
     if (!config.deepLKey) config.deepLKey = await storage.get('ytm_deepl_key');
     const cachedTrans = await storage.get('ytm_trans_enabled');
     if (cachedTrans !== null && cachedTrans !== undefined) config.useTrans = cachedTrans;
+    // 高速モード設定の読み込み
+    const cachedFast = await storage.get('ytm_fast_mode');
+    if (cachedFast !== null && cachedFast !== undefined) config.fastMode = cachedFast;
 
     const cachedSharedTrans = await storage.get('ytm_shared_trans_enabled');
     if (cachedSharedTrans !== null && cachedSharedTrans !== undefined) config.useSharedTranslateApi = cachedSharedTrans;
@@ -2890,102 +2899,167 @@
     }
   }
 
+
   function renderSettingsPanel() {
     if (!ui.settings) return;
+
+    // 現在の曲IDがあるか確認（キャッシュ削除ボタンの制御用）
+    const hasCurrentSong = !!currentKey;
+
     ui.settings.innerHTML = `
-      <button id="ytm-settings-close-btn" style="position:absolute;right:12px;top:10px;width:24px;height:24px;border-radius:999px;border:none;background:rgba(255,255,255,0.08);color:#fff;font-size:16px;line-height:1;cursor:pointer;">×</button>
-      <h3>${t('settings_title')}</h3>
-      
-      <div class="setting-item ytm-lang-section">
-        <div class="ytm-lang-label">${t('settings_ui_lang')}</div>
-        <div class="ytm-lang-group" id="ui-lang-group"></div>
+      <div class="settings-header">
+        <h3>${t('settings_title')}</h3>
+        <button id="ytm-settings-close-btn">×</button>
       </div>
-
-      <div class="setting-item" style="margin-top:15px; border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">
-        <div class="ytm-lang-label" style="display:flex;justify-content:space-between;">
-            <span>歌詞の太さ (Weight)</span>
-            <span id="weight-val">${config.lyricWeight || 800}</span>
-        </div>
-        <input type="range" id="weight-slider" min="100" max="900" step="100" value="${config.lyricWeight || 800}" style="width:100%; cursor:pointer;">
+      
+      <div class="settings-scroll-area">
         
-        <div class="ytm-lang-label" style="display:flex;justify-content:space-between; margin-top:10px;">
-            <span>背景の明るさ (Brightness)</span>
-            <span id="bright-val">${Math.round((config.bgBrightness || 0.35) * 100)}%</span>
-        </div>
-        <input type="range" id="bright-slider" min="0.1" max="1.0" step="0.05" value="${config.bgBrightness || 0.35}" style="width:100%; cursor:pointer;">
-      </div>
-      <div class="setting-item" style="margin-top:15px; border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">
-        <label class="toggle-label">
-          <span>${t('settings_trans')}</span>
-          <input type="checkbox" id="trans-toggle">
-        </label>
-      </div>
-      
-      
-      <div class="setting-item">
-        <label class="toggle-label">
-          <span>${t('settings_shared_trans')}</span>
-          <input type="checkbox" id="shared-trans-toggle">
-        </label>
-      </div>
+        <div class="settings-section">
+          <div class="settings-section-title">Visuals</div>
+          <div class="settings-group-card">
+            
+            <div class="setting-row" style="flex-direction:column; align-items:flex-start; gap:8px;">
+              <div style="width:100%; display:flex; justify-content:space-between;">
+                <span style="font-size:13px;">UI Language</span>
+                <div class="ytm-lang-group" id="ui-lang-group" style="background:transparent; padding:0;"></div>
+              </div>
+            </div>
 
-      <div class="setting-item ytm-lang-section">
-        <div class="ytm-lang-label">${t('settings_main_lang')}</div>
-        <div class="ytm-lang-group" id="main-lang-group">
-          <button class="ytm-lang-pill" data-value="original">Original</button>
-          <button class="ytm-lang-pill" data-value="ja">日本語</button>
-          <button class="ytm-lang-pill" data-value="en">English</button>
-          <button class="ytm-lang-pill" data-value="ko">한국어</button>
+            <div class="setting-row" style="flex-direction:column; align-items:stretch; gap:12px;">
+              <div style="display:flex; justify-content:space-between; font-size:13px;">
+                <span>歌詞の太さ (Weight)</span>
+                <span id="weight-val" style="opacity:0.7;">${config.lyricWeight || 800}</span>
+              </div>
+              <input type="range" id="weight-slider" min="100" max="900" step="100" value="${config.lyricWeight || 800}" style="width:100%;">
+            </div>
+
+            <div class="setting-row" style="flex-direction:column; align-items:stretch; gap:12px;">
+               <div style="display:flex; justify-content:space-between; font-size:13px;">
+                <span>背景の明るさ (Brightness)</span>
+                <span id="bright-val" style="opacity:0.7;">${Math.round((config.bgBrightness || 0.35) * 100)}%</span>
+              </div>
+              <input type="range" id="bright-slider" min="0.1" max="1.0" step="0.05" value="${config.bgBrightness || 0.35}" style="width:100%;">
+            </div>
+          </div>
         </div>
-      </div>
-      <div class="setting-item ytm-lang-section">
-        <div class="ytm-lang-label">${t('settings_sub_lang')}</div>
-        <div class="ytm-lang-group" id="sub-lang-group">
-          <button class="ytm-lang-pill" data-value="">なし</button>
-          <button class="ytm-lang-pill" data-value="ja">日本語</button>
-          <button class="ytm-lang-pill" data-value="en">English</button>
-          <button class="ytm-lang-pill" data-value="ko">한국어</button>
+
+        <div class="settings-section">
+          <div class="settings-section-title">Translation & Features</div>
+          <div class="settings-group-card">
+            <div class="setting-row">
+              <label class="toggle-label" style="width:100%;">
+                <span>${t('settings_trans')}</span>
+                <input type="checkbox" id="trans-toggle">
+              </label>
+            </div>
+            
+            <div class="setting-row">
+              <label class="toggle-label" style="width:100%;">
+                <span>${t('settings_fast_mode')}</span>
+                <input type="checkbox" id="fast-mode-toggle">
+              </label>
+            </div>
+
+            <div class="setting-row">
+              <label class="toggle-label" style="width:100%;">
+                <span>${t('settings_shared_trans')}</span>
+                <input type="checkbox" id="shared-trans-toggle">
+              </label>
+            </div>
+
+             <div class="setting-row" style="flex-wrap:wrap; gap:10px;">
+                <div style="width:100%; display:flex; justify-content:space-between; align-items:center;">
+                  <span style="font-size:13px;">${t('settings_sync_offset')}</span>
+                  <input type="number" id="sync-offset-input" placeholder="0" style="width:60px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); color:#fff; border-radius:6px; padding:4px; text-align:right;">
+                </div>
+                <label class="toggle-label" style="width:100%; margin-top:4px;">
+                  <span style="font-size:11px; opacity:0.7;">${t('settings_sync_offset_save')}</span>
+                  <input type="checkbox" id="sync-offset-save-toggle">
+                </label>
+            </div>
+          </div>
         </div>
-      </div>
-      <div class="setting-item" id="sync-offset-setting">
-      <span>${t('settings_sync_offset')}(ms)</span>
-      <input type="number" id="sync-offset-input" placeholder="(ms)">
-      </div>
-      <div class="setting-item">
-        <label class="toggle-label">
-          <span>${t('settings_sync_offset_save')}</span>
-          <input type="checkbox" id="sync-offset-save-toggle">
-        </label>
-      </div>
-      <div class="setting-item" style="margin-top:15px;">
-        <input type="password" id="deepl-key-input" placeholder="DeepL API Key">
-      </div>
-      <div style="display:flex; gap:10px; margin-top:20px;">
-        <button id="save-settings-btn" style="flex:1;">${t('settings_save')}</button>
-        <button id="clear-all-btn" style="background:#ff3b30; color:white;">${t('settings_reset')}</button>
+
+        <div class="settings-section">
+          <div class="settings-section-title">Translation Target</div>
+          <div class="settings-group-card">
+             <div class="setting-row" style="flex-direction:column; align-items:flex-start;">
+                <div class="ytm-lang-label">${t('settings_main_lang')}</div>
+                <div class="ytm-lang-group" id="main-lang-group" style="margin-top:6px;">
+                  <button class="ytm-lang-pill" data-value="original">Original</button>
+                  <button class="ytm-lang-pill" data-value="ja">日本語</button>
+                  <button class="ytm-lang-pill" data-value="en">English</button>
+                  <button class="ytm-lang-pill" data-value="ko">한국어</button>
+                </div>
+             </div>
+             <div class="setting-row" style="flex-direction:column; align-items:flex-start;">
+                <div class="ytm-lang-label">${t('settings_sub_lang')}</div>
+                <div class="ytm-lang-group" id="main-lang-group" style="margin-top:6px;">
+                  <button class="ytm-lang-pill" data-value="original">Original</button>
+                  <button class="ytm-lang-pill" data-value="ja">日本語</button>
+                  <button class="ytm-lang-pill" data-value="en">English</button>
+                  <button class="ytm-lang-pill" data-value="ko">한국어</button>
+                  <button class="ytm-lang-pill" data-value="zh">中文</button>
+                </div>
+             </div>
+             
+             <div class="setting-row" style="display:block;">
+               <div style="font-size:12px; margin-bottom:4px; opacity:0.7;">DeepL API Key (Optional)</div>
+               <input type="password" id="deepl-key-input" class="setting-input-text" placeholder="DeepL API Key">
+             </div>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-section-title">Data Management</div>
+          <div class="settings-group-card">
+            
+            <div class="setting-row" style="display:block;">
+              <button id="delete-current-cache-btn" class="settings-action-btn btn-danger" ${hasCurrentSong ? '' : 'disabled style="opacity:0.5; cursor:not-allowed;"'}>
+                🗑️ この曲の歌詞データを削除
+              </button>
+              <div style="font-size:10px; opacity:0.5; margin-top:4px; text-align:center;">
+                現在再生中の曲の歌詞キャッシュのみを削除します
+              </div>
+            </div>
+
+            <div class="setting-row" style="display:block; border-top:1px solid rgba(255,255,255,0.05);">
+               <button id="clear-all-btn" class="settings-action-btn" style="background:rgba(255,255,255,0.1); color:#fff;">
+                 設定をリセット (Reset All)
+               </button>
+            </div>
+          </div>
+        </div>
+        
+        <div style="padding: 10px 0 20px 0;">
+           <button id="save-settings-btn" class="settings-action-btn btn-primary" style="padding:12px; font-size:14px;">
+             ${t('settings_save')}
+           </button>
+        </div>
+
       </div>
     `;
+
+    // 値の反映
     document.getElementById('deepl-key-input').value = config.deepLKey || '';
     document.getElementById('trans-toggle').checked = config.useTrans;
+    document.getElementById('fast-mode-toggle').checked = !!config.fastMode;
     document.getElementById('shared-trans-toggle').checked = !!config.useSharedTranslateApi;
     document.getElementById('sync-offset-input').valueAsNumber = config.syncOffset || 0;
     document.getElementById('sync-offset-save-toggle').checked = config.saveSyncOffset;
+
+    // スライダーイベント設定
     const wSlider = document.getElementById('weight-slider');
     const bSlider = document.getElementById('bright-slider');
-
     if (wSlider) {
-      wSlider.value = config.lyricWeight || 800;
-      document.getElementById('weight-val').textContent = wSlider.value;
       wSlider.addEventListener('input', (e) => {
         const val = e.target.value;
         document.getElementById('weight-val').textContent = val;
-        config.lyricWeight = val; // 即時反映
+        config.lyricWeight = val;
         document.documentElement.style.setProperty('--ytm-lyric-weight', val);
       });
     }
     if (bSlider) {
-      bSlider.value = config.bgBrightness || 0.35;
-      document.getElementById('bright-val').textContent = Math.round(bSlider.value * 100) + '%';
       bSlider.addEventListener('input', (e) => {
         const val = e.target.value;
         document.getElementById('bright-val').textContent = Math.round(val * 100) + '%';
@@ -2993,11 +3067,22 @@
       });
     }
 
+    // 言語ピル設定
     setupLangPills('main-lang-group', config.mainLang, v => { config.mainLang = v; });
     setupLangPills('sub-lang-group', config.subLang, v => { config.subLang = v; });
     refreshUiLangGroup();
-    document.getElementById('save-settings-btn').onclick = async () => {
 
+    // 閉じるボタン
+    const closeBtn = document.getElementById('ytm-settings-close-btn');
+    if (closeBtn) {
+      closeBtn.onclick = (ev) => {
+        ev.stopPropagation();
+        ui.settings.classList.remove('active');
+      };
+    }
+
+    // 保存ボタンの処理
+    document.getElementById('save-settings-btn').onclick = async () => {
       const savedMainLang = await storage.get('ytm_main_lang');
       const savedSubLang = await storage.get('ytm_sub_lang');
       const savedUseTrans = await storage.get('ytm_trans_enabled');
@@ -3010,28 +3095,28 @@
       const prevUseSharedTrans = savedSharedTrans !== null ? savedSharedTrans : false;
       const prevUiLang = savedUiLang || (config.uiLang || 'ja');
 
+      // 画面から値を取得
       config.deepLKey = document.getElementById('deepl-key-input').value.trim();
       config.useTrans = document.getElementById('trans-toggle').checked;
       config.useSharedTranslateApi = document.getElementById('shared-trans-toggle').checked;
-
-      // ★設定保存
+      config.fastMode = document.getElementById('fast-mode-toggle').checked;
       config.lyricWeight = document.getElementById('weight-slider').value;
       config.bgBrightness = document.getElementById('bright-slider').value;
-
+      
       const offsetVal = document.getElementById('sync-offset-input').valueAsNumber;
       config.syncOffset = isNaN(offsetVal) ? 0 : offsetVal;
       config.saveSyncOffset = document.getElementById('sync-offset-save-toggle').checked;
 
+      // ストレージに保存
       storage.set('ytm_deepl_key', config.deepLKey);
       storage.set('ytm_trans_enabled', config.useTrans);
       storage.set('ytm_shared_trans_enabled', config.useSharedTranslateApi);
+      storage.set('ytm_fast_mode', config.fastMode);
       storage.set('ytm_main_lang', config.mainLang);
       storage.set('ytm_sub_lang', config.subLang);
       storage.set('ytm_ui_lang', config.uiLang);
-
       storage.set('ytm_lyric_weight', config.lyricWeight);
       storage.set('ytm_bg_brightness', config.bgBrightness);
-
       storage.set('ytm_sync_offset', config.syncOffset);
       storage.set('ytm_save_sync_offset', config.saveSyncOffset);
 
@@ -3052,12 +3137,30 @@
       }
     };
 
+    // リセットボタン
     document.getElementById('clear-all-btn').onclick = storage.clear;
-    const closeBtn = document.getElementById('ytm-settings-close-btn');
-    if (closeBtn) {
-      closeBtn.onclick = (ev) => {
-        ev.stopPropagation();
-        ui.settings.classList.remove('active');
+
+    // キャッシュ削除ボタンの処理
+    const delBtn = document.getElementById('delete-current-cache-btn');
+    if (delBtn) {
+      delBtn.onclick = async () => {
+        if (!currentKey) return;
+        if (confirm('現在の曲の歌詞キャッシュを削除しますか？\n（歌詞データ、同期情報などがリセットされます）')) {
+          await storage.remove(currentKey);
+          
+          lyricsData = [];
+          dynamicLines = null;
+          lyricsCandidates = null;
+          selectedCandidateId = null;
+          lyricsRequests = null;
+          lyricsConfig = null;
+          
+          renderLyrics([]);
+          refreshCandidateMenu();
+          refreshLockMenu();
+          
+          showToast('歌詞キャッシュを削除しました');
+        }
       };
     }
   }
@@ -3149,7 +3252,7 @@
       }
     };
 
-    const trashBtnConfig = { txt: '🗑️', cls: 'icon-btn', click: () => { } };
+    
     const settingsBtnConfig = {
       txt: '⚙️',
       cls: 'icon-btn',
@@ -3162,7 +3265,7 @@
     };
 
     // ボタン配列に追加
-    btns.push(lyricsBtnConfig, shareBtnConfig, pipBtnConfig, replayBtnConfig, trashBtnConfig, settingsBtnConfig);
+    btns.push(lyricsBtnConfig, shareBtnConfig, pipBtnConfig, replayBtnConfig,  settingsBtnConfig);
 
     btns.forEach(b => {
       const btn = createEl('button', '', `ytm-glass-btn ${b.cls || ''}`, b.txt);
@@ -3175,7 +3278,7 @@
       if (b === shareBtnConfig) {
         ui.shareBtn = btn;
       }
-      if (b === trashBtnConfig) setupDeleteDialog(btn);
+      
       if (b === settingsBtnConfig) ui.settingsBtn = btn;
     });
 
@@ -3242,6 +3345,41 @@
     }
     if (!data && !noLyricsCached) {
       let gotLyrics = false;
+      
+
+      if (config.fastMode) {
+        console.log('🚀 Fast Mode: Fetching for', meta.title);
+        try {
+          // 直接 LrcLib API を叩く 
+          const q = encodeURIComponent(meta.title + ' ' + meta.artist);
+          const res = await fetch(`https://lrclib.net/api/search?q=${q}`);
+          const list = await res.json();
+          
+          // 曲の長さ(秒)を取得して、誤差5秒以内の候補を探す
+          const video = document.querySelector('video');
+          const duration = video ? video.duration : 0;
+          const match = list.find(t => Math.abs(t.duration - duration) < 5);
+
+          if (match) {
+            console.log('🚀 Fast Mode Hit:', match.name);
+            // 歌詞があれば即適用して関数を終了（これ以降の重い処理はスキップ）
+            await applyLyricsText(match.syncedLyrics || match.plainLyrics);
+            
+            // キャッシュにも保存しておく
+            if (thisKey === currentKey) {
+              storage.set(thisKey, {
+                lyrics: match.syncedLyrics || match.plainLyrics,
+                dynamicLines: null, 
+                noLyrics: false
+              });
+            }
+            return; 
+          }
+        } catch (e) {
+          console.error('Fast mode error:', e);
+        }
+      }
+      
       try {
         const track = meta.title.replace(/\s*[\(-\[].*?[\)-]].*/, '');
         const artist = meta.artist;
@@ -3260,7 +3398,7 @@
         refreshCandidateMenu();
         refreshLockMenu();
         isFallbackLyrics = !!res?.githubFallback;
-        if (isFallbackLyrics) showToast('APIが応答しないため、GitHubの歌詞を使用しました');
+
         if (res?.success && typeof res.lyrics === 'string' && res.lyrics.trim()) {
           data = res.lyrics;
           gotLyrics = true;
@@ -3354,6 +3492,11 @@
 
     if (PipManager.pipWindow && PipManager.pipLyricsContainer) {
       PipManager.pipLyricsContainer.innerHTML = ui.lyrics.innerHTML;
+      
+
+      if (PipManager.pipWindow.document) {
+        PipManager.pipWindow.document.body.classList.toggle('ytm-no-timestamp', !hasTimestamp);
+      }
     }
 
     updateShareSelectionHighlight();
@@ -3871,6 +4014,27 @@
     PipManager.updateMeta(meta.title, meta.artist);
     PipManager.resetLyrics();
   }
+  
+  
+  
+
+  (async function applySavedVisualSettings() {
+    // 1. 歌詞の太さ
+    const savedWeight = await storage.get('ytm_lyric_weight');
+    if (savedWeight) {
+      config.lyricWeight = savedWeight;
+      document.documentElement.style.setProperty('--ytm-lyric-weight', savedWeight);
+    }
+
+    // 2. 背景の明るさ
+    const savedBright = await storage.get('ytm_bg_brightness');
+    if (savedBright) {
+      config.bgBrightness = savedBright;
+      document.documentElement.style.setProperty('--ytm-bg-brightness', savedBright);
+    }
+  })();
+  
+  
   // ===================== 初期化 =====================
 
   ReplayManager.init();
