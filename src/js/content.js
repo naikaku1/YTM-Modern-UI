@@ -953,16 +953,28 @@
     get: (k) => new Promise(r => {
       if (!storage._api) return r(null);
       storage._api.get([k], res => {
-        // ★修正: res[k] || null だと false が null になってしまうため修正
         const val = res ? res[k] : undefined;
         r(val !== undefined ? val : null);
       });
     }),
-    set: (k, v) => { if (storage._api) storage._api.set({ [k]: v }); },
-    remove: (k) => { if (storage._api) storage._api.remove(k); },
+ 
+    set: (k, v) => new Promise(resolve => {
+      if (storage._api) {
+        storage._api.set({ [k]: v }, resolve);
+      } else {
+        resolve();
+      }
+    }),
+
+    remove: (k) => new Promise(resolve => {
+      if (storage._api) {
+        storage._api.remove(k, resolve);
+      } else {
+        resolve();
+      }
+    }),
     clear: () => confirm('全データを削除しますか？') && storage._api?.clear(() => location.reload())
   };
-
   const ReplayManager = {
     HISTORY_KEY: 'ytm_local_history',
     currentVideoId: null,
