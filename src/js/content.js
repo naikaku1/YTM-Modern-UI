@@ -4457,19 +4457,43 @@ const withRandomCacheBusterFast = (url) => {
     }
   };
 
-  function updateMetaUI(meta) {
-    ui.title.innerText = meta.title;
-    ui.artist.innerText = meta.artist;
-    if (meta.src) {
-      ui.artwork.innerHTML = `<img src="${meta.src}" crossorigin="anonymous">`;
-      ui.bg.style.backgroundImage = `url(${meta.src})`;
+function updateMetaUI(meta) {
+  ui.title.innerText = meta.title;
+  ui.artist.innerText = meta.artist;
+
+  if (meta.src) {
+    ui.artwork.innerHTML = `<img src="${meta.src}" crossorigin="anonymous">`;
+    ui.bg.style.backgroundImage = `url(${meta.src})`;
+  }
+  ui.lyrics.innerHTML = '<div class="lyric-loading" style="opacity:0.5; padding:20px;">Loading...</div>';
+
+  // アーティストページのURLを取得
+  let retryCount = 0;
+  const maxRetries = 5;
+  const trySetArtistLink = () => {
+    const bylineWrapper = document.querySelector('ytmusic-player-bar yt-formatted-string.byline.complex-string');
+    const artistLinkEl = bylineWrapper ? bylineWrapper.querySelector('a.yt-simple-endpoint') : null;
+
+    if (artistLinkEl && artistLinkEl.href) {
+      const channelUrl = artistLinkEl.href;
+        ui.artist.innerHTML = `<a href="${channelUrl}" 
+          style="color:inherit; text-decoration:none;"
+          target="_blank">
+          ${meta.artist}
+        </a>`;
+      return;
     }
 
-    ui.lyrics.innerHTML = '<div class="lyric-loading" style="opacity:0.5; padding:20px;">Loading...</div>';
+    retryCount++;
+    if (retryCount < maxRetries) {
+      setTimeout(trySetArtistLink, 300);
+    } else { // URL失敗時
+      ui.artist.innerText = meta.artist;
+    }
+  };
 
-    PipManager.updateMeta(meta.title, meta.artist);
-    PipManager.resetLyrics();
-  }
+  trySetArtistLink();
+}
   
   
   

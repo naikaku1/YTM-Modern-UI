@@ -719,9 +719,13 @@ body.ytm-custom-layout ytmusic-player-bar #hover-time-info-new {
   border-radius: 6px !important;
 }
 
-/* プレイヤーバー内の曲情報は使わない */
-body.ytm-custom-layout .content-info-wrapper .style-scope {
-  display: none !important;
+body.ytm-custom-layout ytmusic-player-bar .content-info-wrapper {
+  visibility: hidden !important;   /* display:none → visibility:hidden に変更 */
+  position: absolute !important;   /* レイアウトから外す */
+  left: -9999px !important;        /* 画面外に飛ばす */
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
 }
 
 /* 右側コントロール */
