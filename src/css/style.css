@@ -719,13 +719,9 @@ body.ytm-custom-layout ytmusic-player-bar #hover-time-info-new {
   border-radius: 6px !important;
 }
 
-body.ytm-custom-layout ytmusic-player-bar .content-info-wrapper {
-  visibility: hidden !important;   /* display:none → visibility:hidden に変更 */
-  position: absolute !important;   /* レイアウトから外す */
-  left: -9999px !important;        /* 画面外に飛ばす */
-  width: 1px !important;
-  height: 1px !important;
-  overflow: hidden !important;
+/* プレイヤーバー内の曲情報は使わない */
+body.ytm-custom-layout .content-info-wrapper .style-scope {
+  display: none !important;
 }
 
 /* 右側コントロール */
@@ -2169,4 +2165,17 @@ body.ytm-custom-layout::before {
   background-color: #050505;
   z-index: 999; 
   pointer-events: none;
+}
+
+
+/* duet: sub vocal lines align right */
+.lyric-line.sub-vocal {
+  text-align: right;
+  padding-left: 20px;
+  padding-right: 40px;
+  transform-origin: right;
+}
+
+.lyric-line.sub-vocal .lyric-main {
+  text-align: right;
 }
