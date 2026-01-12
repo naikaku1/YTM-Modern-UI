@@ -2741,7 +2741,112 @@
     return alignedMap;
   };
 
-  async function applyLyricsText(rawLyrics) {
+  
+  // ===================== Dynamic line post-processing =====================
+  // Some providers return Dynamic lyrics in "word chunks" (e.g. each char item is a whole word).
+  // We normalize them into true character-level timings by distributing each chunk's duration
+  // across its characters (1 char at a time).
+  function normalizeDynamicLinesToCharLevel(dynLines) {
+    if (!Array.isArray(dynLines) || dynLines.length === 0) return dynLines;
+
+    const toMs = (v) => {
+      if (typeof v === 'number' && Number.isFinite(v)) return v;
+      if (typeof v === 'string') {
+        const n = Number(v);
+        if (Number.isFinite(n)) return n;
+      }
+      return null;
+    };
+
+    const getLineStartMs = (line) => {
+      if (!line) return null;
+      return toMs(line.startTimeMs) ?? toMs(line.time) ?? null;
+    };
+
+    const getCharStartMs = (ch) => {
+      if (!ch) return null;
+      return toMs(ch.t) ?? toMs(ch.time) ?? toMs(ch.startTimeMs) ?? null;
+    };
+
+    const isWordChunk = (s) => {
+      if (typeof s !== 'string') return false;
+      // Use Array.from to be Unicode-safe (emoji etc.)
+      return Array.from(s).length > 1;
+    };
+
+    const expandChunk = (chunkText, startMs, endMs) => {
+      const arr = Array.from(String(chunkText ?? ''));
+      const n = arr.length;
+      if (!n) return [];
+      const s = (typeof startMs === 'number' && Number.isFinite(startMs)) ? startMs : null;
+      const e = (typeof endMs === 'number' && Number.isFinite(endMs)) ? endMs : null;
+
+      // If we can't determine timing, emit all at 0 (will appear immediately when line becomes active)
+      if (s == null) return arr.map(c => ({ t: 0, c }));
+
+      if (e == null || e <= s) return arr.map(c => ({ t: s, c }));
+
+      const dur = Math.max(1, e - s);
+      const step = dur / n;
+      const out = [];
+      for (let i = 0; i < n; i++) {
+        out.push({ t: s + Math.floor(step * i), c: arr[i] });
+      }
+      return out;
+    };
+
+    for (let li = 0; li < dynLines.length; li++) {
+      const line = dynLines[li];
+      if (!line || !Array.isArray(line.chars) || line.chars.length === 0) continue;
+
+      // detect if any "char" item is actually a multi-character chunk (word)
+      const hasChunk = line.chars.some(ch => isWordChunk(ch?.c));
+      if (!hasChunk) continue;
+
+      const nextLineStartMs = (li + 1 < dynLines.length) ? getLineStartMs(dynLines[li + 1]) : null;
+      const lineStartMs = getLineStartMs(line) ?? getCharStartMs(line.chars[0]) ?? 0;
+
+      // Build expanded character list
+      const expanded = [];
+      for (let i = 0; i < line.chars.length; i++) {
+        const seg = line.chars[i];
+        const segText = (seg && typeof seg.c === 'string') ? seg.c : '';
+        const segStart = getCharStartMs(seg) ?? lineStartMs;
+
+        // End bound is next segment's start, else next line, else a small fallback window
+        let segEnd = (i + 1 < line.chars.length) ? getCharStartMs(line.chars[i + 1]) : null;
+        if (segEnd == null) segEnd = toMs(line.endTimeMs) ?? nextLineStartMs ?? (segStart + 1500);
+        if (typeof segEnd === 'number' && segEnd <= segStart) segEnd = segStart + 200;
+
+        // Even if segText is already single "character", keep it as-is
+        const segArr = Array.from(String(segText));
+        if (segArr.length <= 1) {
+          if (segArr.length === 1) expanded.push({ t: segStart, c: segArr[0] });
+          continue;
+        }
+
+        expanded.push(...expandChunk(segText, segStart, segEnd));
+      }
+
+      // Replace with normalized chars
+      line.chars = expanded;
+      // Update line text if missing or mismatched
+      try {
+        const rebuilt = expanded.map(x => x.c).join('');
+        if (typeof line.text !== 'string' || line.text.length === 0) line.text = rebuilt;
+      } catch (e) { }
+
+      // Ensure startTimeMs exists
+      if (typeof line.startTimeMs !== 'number' || !Number.isFinite(line.startTimeMs)) {
+        const firstT = expanded.length ? expanded[0].t : lineStartMs;
+        line.startTimeMs = firstT;
+      }
+    }
+
+    return dynLines;
+  }
+
+async function applyLyricsText(rawLyrics) {
     const keyAtStart = currentKey;
     if (!rawLyrics || typeof rawLyrics !== 'string' || !rawLyrics.trim()) {
       if (keyAtStart !== currentKey) return;
@@ -2781,6 +2886,14 @@
       }
     }
     if (keyAtStart !== currentKey) return;
+
+    // Normalize Dynamic lyrics: expand "word chunks" into character-level timings
+    try {
+      if (Array.isArray(dynamicLines) && dynamicLines.length) {
+        dynamicLines = normalizeDynamicLinesToCharLevel(dynamicLines);
+      }
+    } catch (e) { }
+
     lyricsData = finalLines;
     renderLyrics(finalLines);
   }
@@ -3849,11 +3962,12 @@ const withRandomCacheBusterFast = (url) => {
                 textLine = line.chars.map(c => c.c || c.text || c.caption || '').join('');
               }
 
-              textLine = (textLine || '').trim();
+              // Keep original spaces (do not auto-trim)
+              textLine = String(textLine ?? '');
               const tag = `[${formatLrcTimeLocal(ms / 1000)}]`;
               out.push(textLine ? `${tag} ${textLine}` : tag);
             }
-            return out.join('\n').trim();
+            return out.join('\n').trimEnd();
           };
 
           try {
@@ -3875,15 +3989,58 @@ const withRandomCacheBusterFast = (url) => {
             const parseDynamicLrcLocal = (text) => {
               const out = [];
               if (!text) return out;
+
               const rows = String(text).replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+
+              // 1st pass: parse lines so we can use the next line timestamp as an end bound
+              const parsed = [];
               for (const raw of rows) {
                 const line = raw.trimEnd();
                 if (!line) continue;
+
                 const m = line.match(/^\[(\d+:\d{2}(?:\.\d{1,3})?)\]\s*(.*)$/);
                 if (!m) continue;
 
-                const lineMs = parseLrcTimeToMsLocal(m[1]);
-                const rest = m[2] || '';
+                parsed.push({
+                  lineMs: parseLrcTimeToMsLocal(m[1]),
+                  rest: m[2] || '',
+                });
+              }
+
+              const pushDistributed = (chars, chunk, startMs, endMs) => {
+                if (!chunk) return;
+                const arr = Array.from(chunk);
+                const n = arr.length;
+                if (!n) return;
+
+                const s = (typeof startMs === 'number') ? startMs : null;
+                const e = (typeof endMs === 'number') ? endMs : null;
+
+                if (s == null) {
+                  for (const ch of arr) chars.push({ t: 0, c: ch });
+                  return;
+                }
+
+                // no duration: show immediately at s
+                if (e == null || e <= s) {
+                  for (const ch of arr) chars.push({ t: s, c: ch });
+                  return;
+                }
+
+                const dur = Math.max(1, e - s);
+                const step = dur / n;
+
+                for (let i = 0; i < n; i++) {
+                  const t = s + Math.floor(step * i);
+                  chars.push({ t, c: arr[i] });
+                }
+              };
+
+              for (let li = 0; li < parsed.length; li++) {
+                const { lineMs, rest } = parsed[li];
+                const nextLineMs = (li + 1 < parsed.length && typeof parsed[li + 1].lineMs === 'number')
+                  ? parsed[li + 1].lineMs
+                  : null;
 
                 const chars = [];
                 const tagRe = /<(\d+:\d{2}(?:\.\d{1,3})?)>/g;
@@ -3896,34 +4053,42 @@ const withRandomCacheBusterFast = (url) => {
                   if (!mm) break;
 
                   const tagMs = parseLrcTimeToMsLocal(mm[1]);
+
+                  // chunk before the 1st tag (often a leading space)
+                  if (prevMs == null && tagMs != null && mm.index > prevEnd) {
+                    const chunk0 = rest.slice(prevEnd, mm.index);
+                    pushDistributed(chars, chunk0, tagMs, tagMs);
+                  }
+
                   if (prevMs != null) {
                     const chunk = rest.slice(prevEnd, mm.index);
-                    if (chunk) {
-                      for (const ch of Array.from(chunk)) {
-                        chars.push({ t: prevMs, c: ch });
-                      }
-                    }
+                    pushDistributed(chars, chunk, prevMs, tagMs);
                   }
+
                   prevMs = tagMs;
                   prevEnd = mm.index + mm[0].length;
                 }
 
                 if (prevMs != null) {
                   const chunk = rest.slice(prevEnd);
-                  if (chunk) {
-                    for (const ch of Array.from(chunk)) {
-                      chars.push({ t: prevMs, c: ch });
-                    }
-                  }
+
+                  // For the tail, spread chars until the next line begins (or a fallback window)
+                  let endMs = nextLineMs;
+                  if (typeof endMs !== 'number') endMs = prevMs + 1500;
+                  if (endMs <= prevMs) endMs = prevMs + 200;
+
+                  pushDistributed(chars, chunk, prevMs, endMs);
                 }
 
                 const textLine = chars.map(c => c.c).join('');
+
                 out.push({
                   startTimeMs: (typeof lineMs === 'number' ? lineMs : (chars.length ? chars[0].t : 0)),
                   text: textLine,
                   chars,
                 });
               }
+
               return out;
             };
 
@@ -4067,7 +4232,9 @@ const withRandomCacheBusterFast = (url) => {
       if (dyn && Array.isArray(dyn.chars) && dyn.chars.length) {
         dyn.chars.forEach((ch, ci) => {
           const chSpan = createEl('span', '', 'lyric-char');
-          chSpan.textContent = ch.c;
+          // Preserve spaces (avoid browser collapsing/stripping)
+          const cc = (ch.c === '\t') ? ' ' : ch.c;
+          chSpan.textContent = (cc === ' ') ? '\u00A0' : cc;
           chSpan.dataset.charIndex = String(ci);
           if (typeof ch.t === 'number') {
             chSpan.dataset.time = String(ch.t / 1000);
@@ -4210,23 +4377,35 @@ const withRandomCacheBusterFast = (url) => {
       targets.push(PipManager.pipLyricsContainer);
     }
 
+    // When the next line comes within 1 second, also highlight the previous line together
+    const prevIdx = (idx > 0 && idx < lyricsData.length &&
+      typeof lyricsData[idx]?.time === 'number' &&
+      typeof lyricsData[idx - 1]?.time === 'number' &&
+      (lyricsData[idx].time - lyricsData[idx - 1].time) <= 1.0
+    ) ? (idx - 1) : -1;
+
     targets.forEach(container => {
       const rows = container.querySelectorAll('.lyric-line');
       if (rows.length === 0) return;
 
       rows.forEach((r, i) => {
-        if (i === idx) {
+        const isActive = (i === idx) || (i === prevIdx);
+        const isPrimary = (i === idx);
 
+        if (isActive) {
           if (!r.classList.contains('active')) {
             r.classList.add('active');
 
-
-            r.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            // ★★★★★★★★★★★★★★★★★★★★★★★★★★★
-            if (container === ui.lyrics) {
-              ReplayManager.incrementLyricCount();
+            // Only the primary line should scroll / count replay
+            if (isPrimary) {
+              r.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              // ★★★★★★★★★★★★★★★★★★★★★★★★★★★
+              if (container === ui.lyrics) {
+                ReplayManager.incrementLyricCount();
+              }
             }
           }
+
           if (r.classList.contains('has-translation')) {
             r.classList.add('show-translation');
           }
@@ -4245,9 +4424,9 @@ const withRandomCacheBusterFast = (url) => {
             });
           }
         } else {
-
           r.classList.remove('active');
           r.classList.remove('show-translation');
+
           const charSpans = r.querySelectorAll('.lyric-char');
           if (charSpans.length > 0) {
             charSpans.forEach(sp => {

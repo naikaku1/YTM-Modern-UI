@@ -349,7 +349,8 @@ const fetchFromLrchub = (track, artist, youtube_url, video_id) => {
                   .join('');
               }
 
-              textLine = (textLine || '').trim();
+              // Keep original spaces (do not auto-trim)
+              textLine = String(textLine ?? '');
               const timeTag = `[${formatLrcTime(ms / 1000)}]`;
               return textLine ? `${timeTag} ${textLine}` : timeTag;
             })
@@ -443,19 +444,60 @@ const fetchFromGithub = (video_id) => {
     const out = [];
     if (!text) return out;
 
-    const lines = String(text).replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
-    for (const raw of lines) {
+    const rows = String(text).replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+
+    // 1st pass: parse lines so we can use the next line timestamp as an end bound
+    const parsed = [];
+    for (const raw of rows) {
       const line = raw.trimEnd();
       if (!line) continue;
 
       const m = line.match(/^\[(\d+:\d{2}(?:\.\d{1,3})?)\]\s*(.*)$/);
       if (!m) continue;
 
-      const lineMs = parseLrcTimeToMs(m[1]);
-      const rest = m[2] || '';
+      parsed.push({
+        lineMs: parseLrcTimeToMs(m[1]),
+        rest: m[2] || '',
+      });
+    }
 
-      const chars = [];
+    const pushDistributed = (chars, chunk, startMs, endMs) => {
+      if (!chunk) return;
+      const arr = Array.from(chunk);
+      const n = arr.length;
+      if (!n) return;
+
+      const s = (typeof startMs === 'number') ? startMs : null;
+      const e = (typeof endMs === 'number') ? endMs : null;
+
+      if (s == null) {
+        for (const ch of arr) chars.push({ t: 0, c: ch });
+        return;
+      }
+
+      // no duration: show immediately at s
+      if (e == null || e <= s) {
+        for (const ch of arr) chars.push({ t: s, c: ch });
+        return;
+      }
+
+      const dur = Math.max(1, e - s);
+      const step = dur / n;
+
+      for (let i = 0; i < n; i++) {
+        const t = s + Math.floor(step * i);
+        chars.push({ t, c: arr[i] });
+      }
+    };
+
+    for (let li = 0; li < parsed.length; li++) {
+      const { lineMs, rest } = parsed[li];
+      const nextLineMs = (li + 1 < parsed.length && typeof parsed[li + 1].lineMs === 'number')
+        ? parsed[li + 1].lineMs
+        : null;
+
       const tagRe = /<(\d+:\d{2}(?:\.\d{1,3})?)>/g;
+      const chars = [];
 
       let prevMs = null;
       let prevEnd = 0;
@@ -465,25 +507,31 @@ const fetchFromGithub = (video_id) => {
         if (!mm) break;
 
         const tagMs = parseLrcTimeToMs(mm[1]);
+
+        // chunk before the 1st tag (often a leading space)
+        if (prevMs == null && tagMs != null && mm.index > prevEnd) {
+          const chunk0 = rest.slice(prevEnd, mm.index);
+          pushDistributed(chars, chunk0, tagMs, tagMs);
+        }
+
         if (prevMs != null) {
           const chunk = rest.slice(prevEnd, mm.index);
-          if (chunk) {
-            for (const ch of Array.from(chunk)) {
-              chars.push({ t: prevMs, c: ch });
-            }
-          }
+          pushDistributed(chars, chunk, prevMs, tagMs);
         }
+
         prevMs = tagMs;
         prevEnd = mm.index + mm[0].length;
       }
 
       if (prevMs != null) {
         const chunk = rest.slice(prevEnd);
-        if (chunk) {
-          for (const ch of Array.from(chunk)) {
-            chars.push({ t: prevMs, c: ch });
-          }
-        }
+
+        // For the tail, spread chars until the next line begins (or a fallback window)
+        let endMs = nextLineMs;
+        if (typeof endMs !== 'number') endMs = prevMs + 1500;
+        if (endMs <= prevMs) endMs = prevMs + 200;
+
+        pushDistributed(chars, chunk, prevMs, endMs);
       }
 
       const textLine = chars.map(c => c.c).join('');
@@ -525,13 +573,14 @@ const fetchFromGithub = (video_id) => {
           textLine = line.chars.map(c => c.c || c.text || c.caption || '').join('');
         }
 
-        textLine = (textLine || '').trim();
+        // Keep original spaces (do not auto-trim)
+        textLine = String(textLine ?? '');
         const timeTag = `[${formatLrcTime(ms / 1000)}]`;
         return textLine ? `${timeTag} ${textLine}` : timeTag;
       })
       .filter(Boolean);
 
-    return lrcLines.join('\n').trim();
+    return lrcLines.join('\n').trimEnd();
   };
 
   const extractLyricsFromReadme = (text) => {
